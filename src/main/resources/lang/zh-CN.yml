@@ -1,0 +1,134 @@
+prefix: "&a[WooNPC] &r"
+
+# 通用消息
+no-permission: "&c你没有权限执行此操作！"
+player-only: "&c此命令只能由玩家执行！"
+player-not-found: "&c玩家 {player} 不存在！"
+npc-not-found: "&cNPC {npc} 不存在！"
+invalid-number: "&c请输入有效的数字！"
+reload-success: "&a配置重载成功！"
+unknown-command: "&c未知的命令！请使用 /{command} help 查看帮助"
+
+# NPC 创建/删除
+npc:
+  created: "&a成功创建NPC: {name}"
+  removed: "&a成功删除NPC: {name}"
+  already-exists: "&c名为 {name} 的NPC已存在！"
+  limit-reached: "&c已达到NPC数量上限！"
+  invalid-type: "&c无效的实体类型: {type}"
+  invalid-location: "&cNPC 位置无效！"
+  
+  # NPC 信息
+  info:
+    header: "&e========== &6NPC信息: {name} &e=========="
+    id: "&7ID: &f{id}"
+    location: "&7位置: &f{world}, {x}, {y}, {z}"
+    skin: "&7皮肤: &f{skin}"
+    glowing: "&7发光: &f{glowing}"
+    turn-to-player: "&7头部追踪: &f{turn_to_player}"
+    show-in-tab: "&7显示在Tab: &f{show_in_tab}"
+    hologram: "&7全息文字: &f{hologram_lines}"
+    footer: "&e===================================="
+  
+  # NPC 列表
+  list:
+    header: "&e========== &6NPC列表 &e=========="
+    format: "&f{index}. &e{name} &7- {world}"
+    empty: "&c当前没有任何NPC"
+    footer: "&e共 {count} 个NPC"
+
+# 皮肤命令
+skin:
+  set: "&a成功设置NPC {name} 的皮肤为 {skin}"
+  set-mirror: "&a成功设置NPC {name} 为镜像皮肤模式"
+  fetching: "&e正在获取皮肤数据..."
+  fetch-error: "&c获取皮肤失败: {error}"
+  invalid-skin: "&c无效的皮肤类型！"
+  
+# 发光效果
+glowing:
+  enabled: "&a已启用NPC {name} 的发光效果，颜色: {color}"
+  disabled: "&a已禁用NPC {name} 的发光效果"
+  invalid-color: "&c无效的颜色！可用颜色: {colors}"
+
+# 全息文字
+hologram:
+  added: "&a成功添加全息文字: {text}"
+  removed: "&a成功移除全息文字第 {line} 行"
+  cleared: "&a成功清除所有全息文字"
+  set: "&a成功设置第 {line} 行全息文字: {text}"
+  invalid-line: "&c无效的行号！"
+  empty: "&c该NPC没有全息文字"
+  list:
+    header: "&e========== &6全息文字列表 &e=========="
+    format: "&f{index}. &r{text}"
+    empty: "&c该NPC没有全息文字"
+
+# 头部追踪
+turn-to-player:
+  enabled: "&a已启用NPC {name} 的头部追踪"
+  disabled: "&a已禁用NPC {name} 的头部追踪"
+
+# 显示在Tab
+show-in-tab:
+  enabled: "&aNPC {name} 现在会显示在Tab列表中"
+  disabled: "&aNPC {name} 不再显示在Tab列表中"
+
+# 装备
+equipment:
+  set: "&a成功设置NPC {name} 的 {slot} 装备"
+  cleared: "&a成功清除NPC {name} 的 {slot} 装备"
+  invalid-slot: "&c无效的装备槽位！可用: {slots}"
+
+# 姿势
+pose:
+  set: "&a成功设置NPC {name} 的姿势为: {pose}"
+  invalid-pose: "&c无效的姿势！可用: {poses}"
+
+# 动作
+action:
+  added: "&a成功添加动作 #{order}: {type}"
+  removed: "&a成功移除动作 #{index}"
+  cleared: "&a成功清除该触发器的所有动作"
+  invalid-type: "&c无效的动作类型！可用: {types}"
+  invalid-trigger: "&c无效的触发器！可用: {triggers}"
+  invalid-index: "&c无效的动作索引！"
+  requires-value: "&c该动作类型需要提供值参数！"
+  list:
+    header: "&e========== &6动作列表 [{trigger}] &e=========="
+    format: "&f{index}. &e{type} &7- &f{value}"
+    empty: "&c该触发器没有动作"
+
+# 移动
+move:
+  here: "&a成功将NPC {name} 移动到你当前位置"
+  to: "&a成功将NPC {name} 移动到指定位置"
+
+# 复制
+copy:
+  success: "&a成功复制NPC {source} 为 {target}"
+
+# 传送
+teleport:
+  success: "&a已传送到NPC {name}"
+
+# 帮助
+help:
+  header: "&e========== &6WooNPC 帮助 &e=========="
+  create: "&e/{command} create <名称> [--type <类型>] &7- 创建NPC"
+  remove: "&e/{command} remove <名称> &7- 删除NPC"
+  skin: "&e/{command} skin <名称> <皮肤/@mirror> &7- 设置皮肤"
+  glowing: "&e/{command} glowing <名称> <true/false> [颜色] &7- 设置发光"
+  hologram: "&e/{command} hologram <名称> <add/remove/set/clear/list> [内容] &7- 全息文字"
+  turn: "&e/{command} turn_to_player <名称> <true/false> &7- 头部追踪"
+  tab: "&e/{command} show_in_tab <名称> <true/false> &7- Tab显示"
+  equipment: "&e/{command} equipment <名称> <槽位> [@hand] &7- 设置装备"
+  pose: "&e/{command} pose <名称> <姿势> &7- 设置姿势"
+  action: "&e/{command} action <名称> <触发器> <add/remove/list/clear> [类型] [值] &7- 动作"
+  move: "&e/{command} movehere <名称> &7- 移动到此处"
+  copy: "&e/{command} copy <名称> <新名称> &7- 复制NPC"
+  teleport: "&e/{command} tp <名称> &7- 传送到NPC"
+  list: "&e/{command} list &7- 列出所有NPC"
+  info: "&e/{command} info <名称> &7- 查看NPC信息"
+  reload: "&e/{command} reload &7- 重载配置"
+  footer: "&e===================================="

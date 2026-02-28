@@ -1,0 +1,918 @@
+package com.oolonghoo.woonpc.npc;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import com.mojang.datafixers.util.Pair;
+import io.papermc.paper.adventure.PaperAdventure;
+import net.minecraft.Optionull;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.RemoteChatSession;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.*;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ClientInformation;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.util.CraftNamespacedKey;
+import org.bukkit.entity.Player;
+
+import com.oolonghoo.woonpc.util.VersionUtil;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.*;
+
+public class NpcImpl extends Npc {
+    
+    private Entity npc;
+    private final String localName;
+    private final UUID uuid;
+    private Display.TextDisplay sittingVehicle;
+    
+    private static Method gameProfileNameMethod;
+    private static Method gameProfileIdMethod;
+    private static Method gameProfilePropertiesMethod;
+    private static Constructor<?> gameProfileConstructorWithProps;
+    private static Constructor<?> propertyMapConstructor;
+    private static Method serverPlayerLevelMethod;
+    private static Method propertyMapPutAllMethod;
+    private static Method propertyMapReplaceValuesMethod;
+    private static Constructor<?> playerInfoEntryConstructor;
+    private static boolean initialized = false;
+    
+    static {
+        initReflection();
+    }
+    
+    private static synchronized void initReflection() {
+        if (initialized) return;
+        initialized = true;
+        
+        try {
+            gameProfileNameMethod = GameProfile.class.getMethod("getName");
+        } catch (NoSuchMethodException e) {
+            try {
+                gameProfileNameMethod = GameProfile.class.getMethod("name");
+            } catch (NoSuchMethodException ex) {
+                ex.printStackTrace();
+            }
+        }
+        try {
+            gameProfileIdMethod = GameProfile.class.getMethod("getId");
+        } catch (NoSuchMethodException e) {
+            try {
+                gameProfileIdMethod = GameProfile.class.getMethod("id");
+            } catch (NoSuchMethodException ex) {
+                ex.printStackTrace();
+            }
+        }
+        try {
+            gameProfilePropertiesMethod = GameProfile.class.getMethod("getProperties");
+        } catch (NoSuchMethodException e) {
+            try {
+                gameProfilePropertiesMethod = GameProfile.class.getMethod("properties");
+            } catch (NoSuchMethodException ex) {
+                ex.printStackTrace();
+            }
+        }
+        try {
+            gameProfileConstructorWithProps = GameProfile.class.getConstructor(UUID.class, String.class, PropertyMap.class);
+        } catch (NoSuchMethodException e) {
+            gameProfileConstructorWithProps = null;
+        }
+        try {
+            propertyMapConstructor = PropertyMap.class.getConstructor(ImmutableMultimap.class);
+        } catch (NoSuchMethodException e) {
+            propertyMapConstructor = null;
+        }
+        try {
+            serverPlayerLevelMethod = ServerPlayer.class.getMethod("serverLevel");
+        } catch (NoSuchMethodException e) {
+            try {
+                serverPlayerLevelMethod = ServerPlayer.class.getMethod("level");
+            } catch (NoSuchMethodException ex) {
+                ex.printStackTrace();
+            }
+        }
+        try {
+            propertyMapPutAllMethod = PropertyMap.class.getMethod("putAll", com.google.common.collect.Multimap.class);
+        } catch (NoSuchMethodException e) {
+            propertyMapPutAllMethod = null;
+        }
+        try {
+            propertyMapReplaceValuesMethod = PropertyMap.class.getMethod("replaceValues", String.class, Collection.class);
+        } catch (NoSuchMethodException e) {
+            propertyMapReplaceValuesMethod = null;
+        }
+        try {
+            playerInfoEntryConstructor = ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructor(
+                    UUID.class, GameProfile.class, boolean.class, int.class, 
+                    net.minecraft.world.level.GameType.class, Component.class, 
+                    boolean.class, int.class, net.minecraft.network.chat.RemoteChatSession.Data.class
+            );
+        } catch (NoSuchMethodException e) {
+            playerInfoEntryConstructor = null;
+            for (Constructor<?> constructor : ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructors()) {
+                if (constructor.getParameterCount() >= 6) {
+                    playerInfoEntryConstructor = constructor;
+                    break;
+                }
+            }
+        }
+    }
+    
+    private static String getProfileName(GameProfile profile) {
+        if (profile == null) return "";
+        try {
+            if (gameProfileNameMethod != null) {
+                return (String) gameProfileNameMethod.invoke(profile);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+    
+    private static UUID getProfileId(GameProfile profile) {
+        if (profile == null) return null;
+        try {
+            if (gameProfileIdMethod != null) {
+                return (UUID) gameProfileIdMethod.invoke(profile);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    private static PropertyMap getProfileProperties(GameProfile profile) {
+        if (profile == null) return createEmptyPropertyMap();
+        try {
+            if (gameProfilePropertiesMethod != null) {
+                return (PropertyMap) gameProfilePropertiesMethod.invoke(profile);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return createEmptyPropertyMap();
+    }
+    
+    private static ServerLevel getServerLevel(ServerPlayer player) {
+        if (player == null) return null;
+        try {
+            if (serverPlayerLevelMethod != null) {
+                return (ServerLevel) serverPlayerLevelMethod.invoke(player);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    private static GameProfile createGameProfileWithProperties(UUID uuid, String name, PropertyMap properties) {
+        try {
+            if (gameProfileConstructorWithProps != null) {
+                return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, properties);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // 无法创建带属性的 GameProfile，返回基本的 GameProfile
+        return new GameProfile(uuid, name, properties);
+    }
+    
+    private static PropertyMap createEmptyPropertyMap() {
+        try {
+            if (propertyMapConstructor != null) {
+                return (PropertyMap) propertyMapConstructor.newInstance(ImmutableMultimap.of());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    private static PropertyMap createPropertyMap(ImmutableMultimap<String, Property> map) {
+        try {
+            if (propertyMapConstructor != null) {
+                return (PropertyMap) propertyMapConstructor.newInstance(map);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // 尝试使用其他构造函数
+        try {
+            // 尝试无参构造函数
+            Constructor<?> constructor = PropertyMap.class.getConstructor();
+            if (constructor != null) {
+                PropertyMap propertyMap = (PropertyMap) constructor.newInstance();
+                // 检查是否支持 put 操作
+                propertyMap.put("test", new Property("test", "test", "test"));
+                propertyMap.clear();
+                // 如果成功，添加真实数据
+                propertyMap.putAll(map);
+                return propertyMap;
+            }
+        } catch (Exception e) {
+            // 忽略，继续尝试其他方法
+        }
+        
+        return null;
+    }
+    
+    public NpcImpl(NpcData data) {
+        super(data);
+        this.localName = generateLocalName();
+        this.uuid = UUID.randomUUID();
+    }
+    
+    @Override
+    public void create() {
+        MinecraftServer minecraftServer = ((CraftServer) Bukkit.getServer()).getServer();
+        ServerLevel serverLevel = ((CraftWorld) data.getLocation().getWorld()).getHandle();
+        GameProfile gameProfile = new GameProfile(uuid, localName);
+        
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            npc = new ServerPlayer(minecraftServer, serverLevel, 
+                    new GameProfile(uuid, ""), ClientInformation.createDefault());
+            ((ServerPlayer) npc).gameProfile = gameProfile;
+        } else {
+            Optional<Holder.Reference<EntityType<?>>> entityTypeReference = 
+                    BuiltInRegistries.ENTITY_TYPE.get(CraftNamespacedKey.toMinecraft(data.getType().getKey()));
+            if (entityTypeReference.isPresent()) {
+                EntityType<?> nmsType = entityTypeReference.get().value();
+                try {
+                    EntityType.EntityFactory factory = (EntityType.EntityFactory) getFactory(nmsType);
+                    npc = factory.create(nmsType, serverLevel);
+                } catch (Exception e) {
+                    npc = nmsType.create(serverLevel, EntitySpawnReason.COMMAND);
+                }
+                isTeamCreated.clear();
+            }
+        }
+    }
+    
+    private Object getFactory(EntityType<?> entityType) {
+        try {
+            Field factoryField = EntityType.class.getDeclaredField("factory");
+            factoryField.setAccessible(true);
+            return factoryField.get(entityType);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    private void applySkin(ServerPlayer npcPlayer, String value, String signature) {
+        try {
+            GameProfile newProfile = new GameProfile(uuid, localName);
+            Property property = new Property("textures", value, signature);
+            
+            if (VersionUtil.is1_21_11OrLater()) {
+                applySkin1_21_11(npcPlayer, newProfile, property);
+            } else if (VersionUtil.is1_21_4OrLater()) {
+                applySkin1_21_4(npcPlayer, newProfile, property);
+            } else {
+                applySkin1_21(npcPlayer, newProfile, property);
+            }
+        } catch (Exception e) {
+        }
+    }
+    
+    private void applySkin1_21_11(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
+        try {
+            PropertyMap mutableProperties = createMutablePropertyMap();
+            if (mutableProperties != null) {
+                mutableProperties.put("textures", property);
+                Field propertiesField = GameProfile.class.getDeclaredField("properties");
+                propertiesField.setAccessible(true);
+                propertiesField.set(newProfile, mutableProperties);
+                npcPlayer.gameProfile = newProfile;
+            }
+        } catch (Exception e) {
+            applySkinFallback(npcPlayer, newProfile, property);
+        }
+    }
+    
+    private void applySkin1_21_4(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
+        try {
+            PropertyMap properties = getProfileProperties(newProfile);
+            if (propertyMapReplaceValuesMethod != null) {
+                propertyMapReplaceValuesMethod.invoke(properties, "textures", Collections.singleton(property));
+                npcPlayer.gameProfile = newProfile;
+            } else {
+                properties.put("textures", property);
+                npcPlayer.gameProfile = newProfile;
+            }
+        } catch (Exception e) {
+            applySkinFallback(npcPlayer, newProfile, property);
+        }
+    }
+    
+    private void applySkin1_21(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
+        try {
+            PropertyMap properties = getProfileProperties(newProfile);
+            properties.put("textures", property);
+            npcPlayer.gameProfile = newProfile;
+        } catch (Exception e) {
+            applySkinFallback(npcPlayer, newProfile, property);
+        }
+    }
+    
+    private void applySkinFallback(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
+        try {
+            PropertyMap mutableProperties = createMutablePropertyMap();
+            if (mutableProperties != null) {
+                mutableProperties.put("textures", property);
+                Field propertiesField = GameProfile.class.getDeclaredField("properties");
+                propertiesField.setAccessible(true);
+                propertiesField.set(newProfile, mutableProperties);
+                npcPlayer.gameProfile = newProfile;
+            }
+        } catch (Exception e) {
+        }
+    }
+    
+    private PropertyMap createMutablePropertyMap() {
+        try {
+            Constructor<?> constructor = PropertyMap.class.getConstructor();
+            PropertyMap propertyMap = (PropertyMap) constructor.newInstance();
+            propertyMap.put("test", new Property("test", "test"));
+            propertyMap.removeAll("test");
+            return propertyMap;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    @Override
+    public void spawn(Player player) {
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        if (npc == null) {
+            return;
+        }
+        
+        ServerLevel playerLevel = getServerLevel(serverPlayer);
+        if (playerLevel == null) {
+            return;
+        }
+        
+        if (!data.getLocation().getWorld().getName().equalsIgnoreCase(playerLevel.getWorld().getName())) {
+            return;
+        }
+        
+        if (data.getSkinValue() != null && !data.getSkinValue().isEmpty() && npc instanceof ServerPlayer npcPlayer) {
+            applySkin(npcPlayer, data.getSkinValue(), data.getSkinSignature());
+        }
+        
+        List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
+        
+        if (npc instanceof ServerPlayer npcPlayer) {
+            EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.noneOf(ClientboundPlayerInfoUpdatePacket.Action.class);
+            actions.add(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER);
+            actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME);
+            
+            if (data.isShowInTab()) {
+                actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
+            }
+            
+            ClientboundPlayerInfoUpdatePacket playerInfoPacket = 
+                    new ClientboundPlayerInfoUpdatePacket(actions, getEntry(npcPlayer, serverPlayer));
+            packets.add(playerInfoPacket);
+            
+            npc.setPos(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
+        }
+        
+        ClientboundAddEntityPacket addEntityPacket = new ClientboundAddEntityPacket(
+                npc.getId(),
+                npc.getUUID(),
+                data.getLocation().x(),
+                data.getLocation().y(),
+                data.getLocation().z(),
+                data.getLocation().getPitch(),
+                data.getLocation().getYaw(),
+                npc.getType(),
+                0,
+                Vec3.ZERO,
+                data.getLocation().getYaw()
+        );
+        packets.add(addEntityPacket);
+        
+        isVisibleForPlayer.put(player.getUniqueId(), true);
+        
+        if (!data.isShowInTab() && npc instanceof ServerPlayer) {
+            Bukkit.getScheduler().runTaskLaterAsynchronously(
+                    Bukkit.getPluginManager().getPlugin("WooNPC"),
+                    () -> {
+                        ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 
+                                new ClientboundPlayerInfoRemovePacket(List.of(npc.getUUID()));
+                        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                                () -> serverPlayer.connection.send(playerInfoRemovePacket));
+                    },
+                    1L
+            );
+        }
+        
+        ClientboundBundlePacket bundlePacket = new ClientboundBundlePacket(packets);
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
+        
+        update(player);
+    }
+    
+    @Override
+    public void remove(Player player) {
+        if (npc == null) {
+            return;
+        }
+        
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        if (npc instanceof ServerPlayer) {
+            ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 
+                    new ClientboundPlayerInfoRemovePacket(List.of(npc.getUUID()));
+            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                    () -> serverPlayer.connection.send(playerInfoRemovePacket));
+        }
+        
+        ClientboundRemoveEntitiesPacket removeEntitiesPacket = new ClientboundRemoveEntitiesPacket(npc.getId());
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(removeEntitiesPacket));
+        
+        if (sittingVehicle != null) {
+            ClientboundRemoveEntitiesPacket removeSittingVehiclePacket = 
+                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
+            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                    () -> serverPlayer.connection.send(removeSittingVehiclePacket));
+        }
+        
+        isVisibleForPlayer.put(serverPlayer.getUUID(), false);
+    }
+    
+    @Override
+    public void lookAt(Player player, Location location) {
+        if (npc == null) {
+            return;
+        }
+        
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        npc.setRot(location.getYaw(), location.getPitch());
+        npc.setYHeadRot(location.getYaw());
+        npc.setXRot(location.getPitch());
+        npc.setYRot(location.getYaw());
+        
+        ClientboundTeleportEntityPacket teleportEntityPacket = new ClientboundTeleportEntityPacket(
+                npc.getId(),
+                new PositionMoveRotation(
+                        new Vec3(data.getLocation().getX(), data.getLocation().getY(), data.getLocation().getZ()),
+                        Vec3.ZERO,
+                        location.getYaw(),
+                        location.getPitch()
+                ),
+                Set.of(),
+                false
+        );
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(teleportEntityPacket));
+        
+        float angleMultiplier = 256f / 360f;
+        ClientboundRotateHeadPacket rotateHeadPacket = 
+                new ClientboundRotateHeadPacket(npc, (byte) (location.getYaw() * angleMultiplier));
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(rotateHeadPacket));
+    }
+    
+    @Override
+    public void update(Player player, boolean swingArm) {
+        if (npc == null) {
+            return;
+        }
+        
+        if (!isVisibleForPlayer.getOrDefault(player.getUniqueId(), false)) {
+            return;
+        }
+        
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
+        
+        // 解析颜色代码
+        String displayNameStr = data.getDisplayName();
+        net.kyori.adventure.text.Component displayName;
+        if (displayNameStr.contains("&") || displayNameStr.contains("§")) {
+            displayName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize(displayNameStr);
+        } else {
+            displayName = net.kyori.adventure.text.Component.text(displayNameStr);
+        }
+        Component vanillaComponent = PaperAdventure.asVanilla(displayName);
+        
+        if (!(npc instanceof ServerPlayer)) {
+            npc.setCustomName(vanillaComponent);
+            npc.setCustomNameVisible(true);
+        } else {
+            npc.setCustomName(null);
+            npc.setCustomNameVisible(false);
+        }
+        
+        GlowingColor glowingColor = data.getGlowingColor();
+        boolean isGlowing = data.isGlowing();
+        boolean shouldCreateTeam = !glowingColor.isDisabled() || !data.getDisplayName().equalsIgnoreCase("<empty>");
+        
+        if (shouldCreateTeam) {
+            PlayerTeam team = new PlayerTeam(new Scoreboard(), "npc-" + localName);
+            team.getPlayers().clear();
+            team.getPlayers().add(npc instanceof ServerPlayer npcPlayer 
+                    ? getProfileName(npcPlayer.getGameProfile())
+                    : npc.getStringUUID());
+            
+            // 只有在发光启用时才设置团队颜色
+            if (isGlowing && !glowingColor.isDisabled() && glowingColor.getAdventureColor() != null) {
+                team.setColor(PaperAdventure.asVanilla(glowingColor.getAdventureColor()));
+            } else {
+                team.setColor(net.minecraft.ChatFormatting.WHITE);
+            }
+            
+            if (data.getDisplayName().equalsIgnoreCase("<empty>")) {
+                team.setNameTagVisibility(Team.Visibility.NEVER);
+                npc.setCustomName(null);
+                npc.setCustomNameVisible(false);
+            } else {
+                team.setNameTagVisibility(Team.Visibility.ALWAYS);
+            }
+            
+            team.setCollisionRule(Team.CollisionRule.NEVER);
+            
+            if (npc instanceof ServerPlayer npcPlayer) {
+                team.setPlayerPrefix(vanillaComponent);
+                npcPlayer.listName = vanillaComponent;
+            }
+            
+            boolean isTeamCreatedForPlayer = this.isTeamCreated.getOrDefault(player.getUniqueId(), false);
+            packets.add(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, !isTeamCreatedForPlayer));
+            isTeamCreated.put(player.getUniqueId(), true);
+        }
+        
+        if (npc instanceof ServerPlayer npcPlayer) {
+            EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = 
+                    EnumSet.noneOf(ClientboundPlayerInfoUpdatePacket.Action.class);
+            actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME);
+            
+            if (data.isShowInTab()) {
+                actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
+            }
+            
+            ClientboundPlayerInfoUpdatePacket playerInfoPacket = 
+                    new ClientboundPlayerInfoUpdatePacket(actions, getEntry(npcPlayer, serverPlayer));
+            packets.add(playerInfoPacket);
+        }
+        
+        npc.setGlowingTag(data.isGlowing() && !glowingColor.isDisabled());
+        
+        List<Pair<EquipmentSlot, ItemStack>> equipmentList = new ArrayList<>();
+        if (data.getEquipment() != null) {
+            for (Map.Entry<NpcEquipmentSlot, org.bukkit.inventory.ItemStack> entry : data.getEquipment().entrySet()) {
+                equipmentList.add(new Pair<>(
+                        EquipmentSlot.byName(entry.getKey().getNmsName()),
+                        CraftItemStack.asNMSCopy(entry.getValue())
+                ));
+            }
+        }
+        
+        if (!equipmentList.isEmpty()) {
+            ClientboundSetEquipmentPacket setEquipmentPacket = 
+                    new ClientboundSetEquipmentPacket(npc.getId(), equipmentList);
+            packets.add(setEquipmentPacket);
+        }
+        
+        if (npc instanceof ServerPlayer) {
+            npc.getEntityData().set(
+                    net.minecraft.world.entity.player.Player.DATA_PLAYER_MODE_CUSTOMISATION, 
+                    (byte) (0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40)
+            );
+        }
+        
+        refreshEntityData(player);
+        
+        if (data.getLocation() != null) {
+            move(player, swingArm);
+        }
+        
+        if ("sitting".equals(data.getPose())) {
+            setSitting(serverPlayer);
+        } else if (sittingVehicle != null) {
+            ClientboundRemoveEntitiesPacket removeSittingVehiclePacket = 
+                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
+            packets.add(removeSittingVehiclePacket);
+        }
+        
+        if (npc instanceof LivingEntity) {
+            // Scale attribute removed due to version compatibility issues
+        }
+        
+        ClientboundBundlePacket bundlePacket = new ClientboundBundlePacket(packets);
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
+    }
+    
+    @Override
+    protected void refreshEntityData(Player player) {
+        if (!isVisibleForPlayer.getOrDefault(player.getUniqueId(), false)) {
+            return;
+        }
+        
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        SynchedEntityData.DataItem<?>[] itemsById = getItemsById(npc.getEntityData());
+        List<SynchedEntityData.DataValue<?>> entityData = new ArrayList<>();
+        for (SynchedEntityData.DataItem<?> dataItem : itemsById) {
+            entityData.add(dataItem.value());
+        }
+        
+        ClientboundSetEntityDataPacket setEntityDataPacket = 
+                new ClientboundSetEntityDataPacket(npc.getId(), entityData);
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(setEntityDataPacket));
+    }
+    
+    private SynchedEntityData.DataItem<?>[] getItemsById(SynchedEntityData synchedEntityData) {
+        try {
+            Field itemsByIdField = SynchedEntityData.class.getDeclaredField("itemsById");
+            itemsByIdField.setAccessible(true);
+            return (SynchedEntityData.DataItem<?>[]) itemsByIdField.get(synchedEntityData);
+        } catch (Exception e) {
+            return new SynchedEntityData.DataItem<?>[0];
+        }
+    }
+    
+    @Override
+    public void move(Player player, boolean swingArm) {
+        if (npc == null) {
+            return;
+        }
+        
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
+        npc.setPosRaw(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
+        npc.setRot(data.getLocation().getYaw(), data.getLocation().getPitch());
+        npc.setYHeadRot(data.getLocation().getYaw());
+        npc.setXRot(data.getLocation().getPitch());
+        npc.setYRot(data.getLocation().getYaw());
+        
+        ClientboundTeleportEntityPacket teleportEntityPacket = new ClientboundTeleportEntityPacket(
+                npc.getId(),
+                new PositionMoveRotation(
+                        new Vec3(data.getLocation().getX(), data.getLocation().getY(), data.getLocation().getZ()),
+                        Vec3.ZERO,
+                        data.getLocation().getYaw(),
+                        data.getLocation().getPitch()
+                ),
+                Set.of(),
+                false
+        );
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(teleportEntityPacket));
+        
+        float angleMultiplier = 256f / 360f;
+        ClientboundRotateHeadPacket rotateHeadPacket = 
+                new ClientboundRotateHeadPacket(npc, (byte) (data.getLocation().getYaw() * angleMultiplier));
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(rotateHeadPacket));
+        
+        if (swingArm && npc instanceof ServerPlayer) {
+            ClientboundAnimatePacket animatePacket = new ClientboundAnimatePacket(npc, 0);
+            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                    () -> serverPlayer.connection.send(animatePacket));
+        }
+    }
+    
+    private ClientboundPlayerInfoUpdatePacket.Entry getEntry(ServerPlayer npcPlayer, ServerPlayer viewer) {
+        GameProfile profile = npcPlayer.getGameProfile();
+        
+        if (data.isSkinMirror()) {
+            String profileName = getProfileName(profile);
+            UUID profileId = getProfileId(profile);
+            PropertyMap viewerProperties = getProfileProperties(viewer.getGameProfile());
+            profile = createGameProfileWithProperties(profileId != null ? profileId : uuid, profileName, viewerProperties);
+        }
+        
+        return createPlayerInfoEntry(npcPlayer, profile);
+    }
+    
+    private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntry(ServerPlayer npcPlayer, GameProfile profile) {
+        try {
+            return new ClientboundPlayerInfoUpdatePacket.Entry(
+                    npcPlayer.getUUID(),
+                    profile,
+                    data.isShowInTab(),
+                    0,
+                    npcPlayer.gameMode.getGameModeForPlayer(),
+                    npcPlayer.getTabListDisplayName(),
+                    true,
+                    -1,
+                    Optionull.map(npcPlayer.getChatSession(), RemoteChatSession::asData)
+            );
+        } catch (Exception e) {
+            return createPlayerInfoEntryFallback(npcPlayer, profile);
+        }
+    }
+    
+    private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntryFallback(ServerPlayer npcPlayer, GameProfile profile) {
+        try {
+            if (playerInfoEntryConstructor != null) {
+                Class<?>[] paramTypes = playerInfoEntryConstructor.getParameterTypes();
+                Object[] args = new Object[paramTypes.length];
+                args[0] = npcPlayer.getUUID();
+                args[1] = profile;
+                args[2] = data.isShowInTab();
+                args[3] = 0;
+                args[4] = npcPlayer.gameMode.getGameModeForPlayer();
+                args[5] = npcPlayer.getTabListDisplayName();
+                if (paramTypes.length > 6) {
+                    args[6] = true;
+                }
+                if (paramTypes.length > 7) {
+                    args[7] = -1;
+                }
+                if (paramTypes.length > 8) {
+                    args[8] = Optionull.map(npcPlayer.getChatSession(), RemoteChatSession::asData);
+                }
+                return (ClientboundPlayerInfoUpdatePacket.Entry) playerInfoEntryConstructor.newInstance(args);
+            }
+        } catch (Exception ex) {
+        }
+        return null;
+    }
+    
+    private void setSitting(ServerPlayer serverPlayer) {
+        if (npc == null) {
+            return;
+        }
+        
+        if (sittingVehicle == null) {
+            sittingVehicle = new Display.TextDisplay(
+                    EntityType.TEXT_DISPLAY, 
+                    ((CraftWorld) data.getLocation().getWorld()).getHandle()
+            );
+        }
+        
+        sittingVehicle.setPos(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
+        
+        ServerLevel level = getServerLevel(serverPlayer);
+        if (level == null) {
+            return;
+        }
+        
+        ServerEntity serverEntity = new ServerEntity(
+                level,
+                sittingVehicle,
+                0,
+                false,
+                FakeSynchronizer.INSTANCE,
+                Set.of()
+        );
+        
+        ClientboundAddEntityPacket addEntityPacket = new ClientboundAddEntityPacket(sittingVehicle, serverEntity);
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(addEntityPacket));
+        
+        sittingVehicle.passengers = ImmutableList.of(npc);
+        
+        ClientboundSetPassengersPacket packet = new ClientboundSetPassengersPacket(sittingVehicle);
+        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
+                () -> serverPlayer.connection.send(packet));
+    }
+    
+    @Override
+    public float getEyeHeight() {
+        return npc != null ? npc.getEyeHeight() : 1.62f;
+    }
+    
+    @Override
+    public int getEntityId() {
+        return npc != null ? npc.getId() : -1;
+    }
+    
+    public Entity getNmsEntity() {
+        return npc;
+    }
+    
+    public UUID getNpcUuid() {
+        return uuid;
+    }
+    
+    public void setEquipment(NpcEquipmentSlot slot, org.bukkit.inventory.ItemStack item) {
+        data.addEquipment(slot, item);
+        updateForAll();
+    }
+    
+    public void removeEquipment(NpcEquipmentSlot slot) {
+        data.removeEquipment(slot);
+        updateForAll();
+    }
+    
+    public void clearEquipment() {
+        data.setEquipment(new java.util.HashMap<>());
+        updateForAll();
+    }
+    
+    private static EntityDataAccessor<Pose> DATA_POSE_ACCESSOR = null;
+    
+    public void setPose(NpcPose pose) {
+        if (npc == null) {
+            return;
+        }
+        
+        if (pose == NpcPose.SITTING) {
+            setSittingState(true);
+        } else {
+            setSittingState(false);
+            setEntityPose(Pose.valueOf(pose.name()));
+        }
+        
+        data.setPose(pose.getConfigName());
+        updateForAll();
+    }
+    
+    private void setEntityPose(Pose pose) {
+        if (npc == null) {
+            return;
+        }
+        
+        try {
+            if (DATA_POSE_ACCESSOR == null) {
+                Field dataPoseField = Entity.class.getDeclaredField("DATA_POSE");
+                dataPoseField.setAccessible(true);
+                DATA_POSE_ACCESSOR = (EntityDataAccessor<Pose>) dataPoseField.get(null);
+            }
+            
+            npc.getEntityData().set(DATA_POSE_ACCESSOR, pose);
+        } catch (Exception e) {
+            try {
+                npc.setPose(pose);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+    
+    private void setSittingState(boolean sitting) {
+        if (!sitting) {
+            if (sittingVehicle != null) {
+                for (Map.Entry<UUID, Boolean> entry : isVisibleForPlayer.entrySet()) {
+                    if (entry.getValue()) {
+                        Player player = Bukkit.getPlayer(entry.getKey());
+                        if (player != null) {
+                            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+                            ClientboundRemoveEntitiesPacket removePacket = 
+                                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
+                            runOnPlayerScheduler(player, 
+                                    () -> serverPlayer.connection.send(removePacket));
+                        }
+                    }
+                }
+                sittingVehicle = null;
+            }
+        }
+    }
+    
+    public NpcPose getPose() {
+        return NpcPose.fromConfigName(data.getPose());
+    }
+    
+    private void runOnPlayerScheduler(Player player, Runnable task) {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            player.getScheduler().run(
+                    Bukkit.getPluginManager().getPlugin("WooNPC"),
+                    (t) -> task.run(),
+                    null
+            );
+        } catch (ClassNotFoundException e) {
+            task.run();
+        }
+    }
+
+}

@@ -1,0 +1,68 @@
+# WooNPC 主配置文件
+# 作者: oolongho
+
+settings:
+  debug: false
+  language: zh-CN
+  auto-save-interval: 300
+
+# NPC 设置
+npc:
+  # 可见距离 (格)
+  visibility-distance: 50
+  
+  # 头部转向玩家的距离 (格)
+  turn-to-player-distance: 5
+  
+  # 从玩家列表移除NPC的延迟 (tick)
+  remove-npcs-from-playerlist-delay: 20
+  
+  # 默认皮肤 (留空使用Steve皮肤)
+  default-skin: ""
+  
+  # 是否默认显示在Tab列表
+  show-in-tab-by-default: false
+  
+  # 是否默认启用头部追踪
+  turn-to-player-by-default: true
+
+# 全息文字设置
+hologram:
+  # 行间距
+  line-spacing: 0.3
+  
+  # 与NPC头部的距离
+  offset-from-head: 0.5
+
+# 皮肤设置
+skin:
+  # 皮肤缓存时间 (秒)
+  cache-duration: 3600
+  
+  # 是否启用MineSkin API
+  enable-mineskin: false
+  
+  # MineSkin API密钥 (可选)
+  mineskin-api-key: ""
+
+# 动作设置
+action:
+  # 点击冷却时间 (tick)
+  click-cooldown: 10
+  
+  # 是否允许左键点击
+  allow-left-click: true
+  
+  # 是否允许右键点击
+  allow-right-click: true
+
+# 性能设置
+performance:
+  # 可见性检测间隔 (tick)
+  visibility-check-interval: 20
+  
+  # 头部追踪更新间隔 (tick)
+  look-update-interval: 2
+  
+  # 最大NPC数量 (0=无限制)
+  max-npcs-per-world: 0

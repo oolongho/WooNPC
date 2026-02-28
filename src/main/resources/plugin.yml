@@ -1,0 +1,74 @@
+name: WooNPC
+version: ${project.version}
+main: com.oolonghoo.woonpc.WooNPC
+api-version: '1.21'
+author: oolongho
+description: 轻量级高性能 NPC 插件
+
+commands:
+  woonpc:
+    description: WooNPC 主命令
+    usage: /woonpc <create|remove|skin|glowing|hologram|turn|equipment|pose|action|list|info|reload>
+    permission: woonpc.use
+    aliases: [npc, wnpc]
+
+permissions:
+  woonpc.admin:
+    description: 管理员权限 (包含所有权限)
+    default: op
+    children:
+      woonpc.use: true
+      woonpc.create: true
+      woonpc.remove: true
+      woonpc.skin: true
+      woonpc.glowing: true
+      woonpc.hologram: true
+      woonpc.action: true
+      woonpc.equipment: true
+      woonpc.pose: true
+      woonpc.edit: true
+      woonpc.reload: true
+  
+  woonpc.use:
+    description: 基础使用权限 (list, info, tp)
+    default: true
+  
+  woonpc.create:
+    description: 创建 NPC 权限
+    default: op
+  
+  woonpc.remove:
+    description: 删除 NPC 权限
+    default: op
+  
+  woonpc.skin:
+    description: 设置皮肤权限
+    default: op
+  
+  woonpc.glowing:
+    description: 设置发光效果权限
+    default: op
+  
+  woonpc.hologram:
+    description: 管理全息文字权限
+    default: op
+  
+  woonpc.action:
+    description: 管理动作权限
+    default: op
+  
+  woonpc.equipment:
+    description: 管理装备权限
+    default: op
+  
+  woonpc.pose:
+    description: 设置姿势权限
+    default: op
+  
+  woonpc.edit:
+    description: 编辑 NPC 属性权限 (turn_to_player, show_in_tab, move, copy)
+    default: op
+  
+  woonpc.reload:
+    description: 重载配置权限
+    default: op
