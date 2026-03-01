@@ -1,6 +1,6 @@
 # WooNPC
 
-🍵一款现代化的 Minecraft NPC 插件
+🧑一款现代化的 Minecraft NPC 插件，基于 Display Entity
 
 ## 特色
 
@@ -16,13 +16,13 @@
 
 ### ⚡ 动作系统
 - **多种触发器**：左键、右键、任意点击
-- **丰富动作类型**：消息、命令、控制台命令、音效
+- **丰富动作类型**：消息、命令、控制台命令、音效、等待、随机执行、权限检查、OP命令
 - **PlaceholderAPI**：支持 PAPI 变量
 - **冷却时间**：防止刷屏
 
 ### 🖱️ 交互功能
-- **自动面向玩家**：NPC 自动转向附近玩家
-- **全息图支持**：在 NPC 头顶显示文字
+- **自动视角跟随**：NPC 自动转向附近玩家
+- **WooHolograms Hook**：自动检测并使用 WooHolograms 显示全息图
 - **Tab 列表显示**：可选显示在 Tab 列表
 
 ### ⚙️ 配置灵活
@@ -30,12 +30,22 @@
 - **转向距离**：自定义转向玩家的距离
 - **API 优先级**：自定义皮肤 API 调用顺序
 
+### 🎭 实体效果
+- **着火效果**：NPC 显示着火状态
+- **隐形效果**：NPC 隐形
+- **冷颤效果**：NPC 显示冷颤状态
+- **静音效果**：NPC 不发出声音
+
+### 📏 缩放系统
+- **自定义缩放**：支持 0.1 ~ 10.0 倍缩放
+
 ## 环境
 
 - Minecraft 1.21+
 - Java 21+
 - PlaceholderAPI（可选）
 - SkinsRestorer（可选，用于皮肤缓存）
+- WooHolograms（可选，用于全息图显示）
 
 ## 命令
 
@@ -54,6 +64,9 @@
 | `/npc hologram <名称> ...` | 管理全息图 | `woonpc.hologram` |
 | `/npc glowing <名称> <true/false> [颜色]` | 设置发光效果 | `woonpc.glowing` |
 | `/npc turn <名称> <true/false>` | 设置自动转向 | `woonpc.turn` |
+| `/npc pose <名称> <姿势>` | 设置姿势 | `woonpc.pose` |
+| `/npc scale <名称> <比例>` | 设置缩放 | `woonpc.scale` |
+| `/npc effect <名称> <效果> <true/false>` | 设置效果 | `woonpc.effect` |
 | `/npc reload` | 重载配置 | `woonpc.admin` |
 
 ## 皮肤命令
@@ -64,6 +77,13 @@
 | `@none` | 清除皮肤（恢复默认） |
 | `<玩家名>` | 使用正版玩家皮肤 |
 | `<UUID>` | 使用指定 UUID 的皮肤 |
+
+**示例**:
+```
+/npc skin test @mirror        # 镜像皮肤
+/npc skin test @none          # 清除皮肤
+/npc skin test Notch          # 使用 Notch 的皮肤
+```
 
 ## 动作命令
 
@@ -90,7 +110,18 @@
 | `command` | 玩家执行命令 | `command spawn` |
 | `console_command` | 控制台执行命令 | `console_command give %player% diamond 1` |
 | `sound` | 播放音效 | `sound ENTITY_EXPERIENCE_ORB_PICKUP 1.0 1.0` |
+| `wait` | 等待指定时间 | `wait 20` (等待 20 tick = 1秒) |
+| `execute_random_action` | 随机执行一个后续动作 | `execute_random_action` |
+| `need_permission` | 权限检查 | `need_permission woonpc.vip` |
+| `player_command_as_op` | 以 OP 权限执行命令 | `player_command_as_op gamemode creative` |
 
+**示例**:
+```
+/npc action test right_click add message &a欢迎！
+/npc action test any_click add console_command time set day
+/npc action test right_click add need_permission woonpc.vip
+/npc action test right_click add message &a你是VIP玩家！
+```
 
 ## 全息图命令
 
@@ -101,6 +132,77 @@
 | `/npc hologram <名称> delete <行号>` | 删除行 |
 | `/npc hologram <名称> clear` | 清除所有行 |
 | `/npc hologram <名称> list` | 列出所有行 |
+
+## 缩放命令
+
+```
+/npc scale test 1.5    # 设置为 1.5 倍大小
+/npc scale test 0.5    # 设置为 0.5 倍大小
+```
+
+## 效果命令
+
+| 效果 | 描述 |
+|------|------|
+| `on_fire` | 着火效果 |
+| `invisible` | 隐形效果 |
+| `shaking` | 冷颤效果 |
+| `silent` | 静音效果 |
+
+**示例**:
+```
+/npc effect test on_fire true     # 启用着火效果
+/npc effect test invisible false  # 禁用隐形效果
+```
+
+## 发光颜色
+
+| 颜色 | 配置名 |
+|------|------|
+| 黑色 | `black` |
+| 深蓝 | `dark_blue` |
+| 深绿 | `dark_green` |
+| 深青 | `dark_aqua` |
+| 深红 | `dark_red` |
+| 深紫 | `dark_purple` |
+| 金色 | `gold` |
+| 灰色 | `gray` |
+| 深灰 | `dark_gray` |
+| 蓝色 | `blue` |
+| 绿色 | `green` |
+| 青色 | `aqua` |
+| 红色 | `red` |
+| 浅紫 | `light_purple` |
+| 黄色 | `yellow` |
+| 白色 | `white` |
+
+## 配置示例
+
+```yaml
+settings:
+  debug: false
+  language: zh-CN
+  auto-save-interval: 300
+
+npc:
+  visibility-distance: 50
+  turn-to-player-distance: 5
+  show-in-tab-by-default: false
+  turn-to-player-by-default: true
+
+skin:
+  cache-duration: 86400
+  api-priority:
+    - skinsrestorer
+    - mojang
+    - ashcon
+    - minetools
+  enable:
+    skinsrestorer: true
+    mojang: true
+    ashcon: true
+    minetools: true
+```
 
 ## 权限
 
@@ -117,6 +219,9 @@
 | `woonpc.hologram` | 管理全息图 | op |
 | `woonpc.glowing` | 设置发光 | op |
 | `woonpc.turn` | 设置转向 | op |
+| `woonpc.pose` | 设置姿势 | op |
+| `woonpc.scale` | 设置缩放 | op |
+| `woonpc.effect` | 设置效果 | op |
 | `woonpc.admin` | 管理员权限 | op |
 
 ## API 使用示例
