@@ -1,6 +1,6 @@
 # WooNPC
 
-🧑一款现代化的 Minecraft NPC 插件，基于 Display Entity
+🧑一款现代化的 Minecraft NPC 插件
 
 ## 特色
 
@@ -78,13 +78,6 @@
 | `<玩家名>` | 使用正版玩家皮肤 |
 | `<UUID>` | 使用指定 UUID 的皮肤 |
 
-**示例**:
-```
-/npc skin test @mirror        # 镜像皮肤
-/npc skin test @none          # 清除皮肤
-/npc skin test Notch          # 使用 Notch 的皮肤
-```
-
 ## 动作命令
 
 | 命令 | 描述 |
@@ -115,13 +108,6 @@
 | `need_permission` | 权限检查 | `need_permission woonpc.vip` |
 | `player_command_as_op` | 以 OP 权限执行命令 | `player_command_as_op gamemode creative` |
 
-**示例**:
-```
-/npc action test right_click add message &a欢迎！
-/npc action test any_click add console_command time set day
-/npc action test right_click add need_permission woonpc.vip
-/npc action test right_click add message &a你是VIP玩家！
-```
 
 ## 全息图命令
 
@@ -133,13 +119,6 @@
 | `/npc hologram <名称> clear` | 清除所有行 |
 | `/npc hologram <名称> list` | 列出所有行 |
 
-## 缩放命令
-
-```
-/npc scale test 1.5    # 设置为 1.5 倍大小
-/npc scale test 0.5    # 设置为 0.5 倍大小
-```
-
 ## 效果命令
 
 | 效果 | 描述 |
@@ -148,61 +127,6 @@
 | `invisible` | 隐形效果 |
 | `shaking` | 冷颤效果 |
 | `silent` | 静音效果 |
-
-**示例**:
-```
-/npc effect test on_fire true     # 启用着火效果
-/npc effect test invisible false  # 禁用隐形效果
-```
-
-## 发光颜色
-
-| 颜色 | 配置名 |
-|------|------|
-| 黑色 | `black` |
-| 深蓝 | `dark_blue` |
-| 深绿 | `dark_green` |
-| 深青 | `dark_aqua` |
-| 深红 | `dark_red` |
-| 深紫 | `dark_purple` |
-| 金色 | `gold` |
-| 灰色 | `gray` |
-| 深灰 | `dark_gray` |
-| 蓝色 | `blue` |
-| 绿色 | `green` |
-| 青色 | `aqua` |
-| 红色 | `red` |
-| 浅紫 | `light_purple` |
-| 黄色 | `yellow` |
-| 白色 | `white` |
-
-## 配置示例
-
-```yaml
-settings:
-  debug: false
-  language: zh-CN
-  auto-save-interval: 300
-
-npc:
-  visibility-distance: 50
-  turn-to-player-distance: 5
-  show-in-tab-by-default: false
-  turn-to-player-by-default: true
-
-skin:
-  cache-duration: 86400
-  api-priority:
-    - skinsrestorer
-    - mojang
-    - ashcon
-    - minetools
-  enable:
-    skinsrestorer: true
-    mojang: true
-    ashcon: true
-    minetools: true
-```
 
 ## 权限
 
