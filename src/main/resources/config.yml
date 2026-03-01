@@ -37,13 +37,26 @@ hologram:
 # 皮肤设置
 skin:
   # 皮肤缓存时间 (秒)
-  cache-duration: 3600
+  cache-duration: 86400
   
-  # 是否启用MineSkin API
-  enable-mineskin: false
+  # API 优先级 (从高到低尝试)
+  # 可选: skinsrestorer, mojang, ashcon, minetools
+  api-priority:
+    - skinsrestorer
+    - mojang
+    - ashcon
+    - minetools
   
-  # MineSkin API密钥 (可选)
-  mineskin-api-key: ""
+  # 是否启用各 API
+  enable:
+    # SkinsRestorer 插件 (需要安装 SkinsRestorer)
+    skinsrestorer: true
+    # Mojang 官方 API
+    mojang: true
+    # Ashcon API (第三方，更稳定)
+    ashcon: true
+    # MineTools API (第三方备用)
+    minetools: true
 
 # 动作设置
 action:

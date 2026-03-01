@@ -146,8 +146,13 @@ public class ActionManager {
     public void executeActions(@NotNull Npc npc, @NotNull Player player, @NotNull ActionTrigger trigger) {
         String npcId = npc.getData().getId();
         
-        // 获取直接匹配的动作
         List<NpcAction.NpcActionData> directActions = getNpcActions(npcId, trigger);
+        
+        if (directActions.isEmpty()) {
+            org.bukkit.Bukkit.getLogger().info("[WooNPC] No actions found for NPC " + npcId + " with trigger " + trigger);
+        } else {
+            org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing " + directActions.size() + " actions for NPC " + npcId);
+        }
         
         // 如果是左键或右键，也要获取 ANY_CLICK 的动作
         List<NpcAction.NpcActionData> anyClickActions = Collections.emptyList();
@@ -164,9 +169,9 @@ public class ActionManager {
         // 执行动作
         for (NpcAction.NpcActionData actionData : allActions) {
             try {
+                org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing action: " + actionData.action().getName() + " with value: " + actionData.value());
                 actionData.execute(player);
             } catch (Exception e) {
-                // 记录错误但继续执行其他动作
                 e.printStackTrace();
             }
         }

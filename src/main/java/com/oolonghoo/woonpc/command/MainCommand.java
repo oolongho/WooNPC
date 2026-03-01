@@ -288,10 +288,20 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         String skin = args[2];
         if (skin.equalsIgnoreCase("@mirror")) {
             npc.getData().setSkinMirror(true);
+            npc.getData().setSkin("", "");
+            npc.getData().setSkinName("");
             npc.removeForAll();
             npc.spawnForAll();
             npcManager.saveNpcs();
             sender.sendMessage(msg.getWithPrefix("skin.set-mirror", "name", name));
+        } else if (skin.equalsIgnoreCase("@none")) {
+            npc.getData().setSkinMirror(false);
+            npc.getData().setSkin("", "");
+            npc.getData().setSkinName("");
+            npc.removeForAll();
+            npc.spawnForAll();
+            npcManager.saveNpcs();
+            sender.sendMessage(msg.getWithPrefix("skin.cleared", "name", name));
         } else {
             sender.sendMessage(msg.get("skin.fetching", "skin", skin));
             npc.getData().setSkinMirror(false);
@@ -304,9 +314,12 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 
                 npc.getData().setSkinName(skin);
                 npc.getData().setSkin(skinData.getTextureValue(), skinData.getTextureSignature());
-                npc.removeForAll();
-                npc.spawnForAll();
-                npcManager.saveNpcs();
+                
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    npc.removeForAll();
+                    npc.spawnForAll();
+                    npcManager.saveNpcs();
+                });
                 
                 sender.sendMessage(msg.getWithPrefix("skin.set", "name", name, "skin", skin));
             });
@@ -1045,6 +1058,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 case "skin":
                     if (args.length == 3) {
                         completions.add("@mirror");
+                        completions.add("@none");
                         // 添加在线玩家名
                         for (Player online : Bukkit.getOnlinePlayers()) {
                             if (online.getName().toLowerCase().startsWith(prefix)) {

@@ -82,6 +82,9 @@ public class WooNPC extends JavaPlugin {
         // 初始化皮肤管理器
         this.skinManager = new SkinManager(this);
         
+        // 应用皮肤 API 配置
+        applySkinConfig();
+        
         // 注册默认动作
         registerDefaultActions();
         
@@ -345,12 +348,18 @@ public class WooNPC extends JavaPlugin {
         return skinManager;
     }
     
-    /**
-     * 重载插件配置
-     */
+    private void applySkinConfig() {
+        skinManager.setUseSkinsRestorer(configLoader.isEnableSkinsRestorer());
+        skinManager.setUseMojang(configLoader.isEnableMojang());
+        skinManager.setUseAshcon(configLoader.isEnableAshcon());
+        skinManager.setUseMineTools(configLoader.isEnableMineTools());
+    }
+    
     public void reload() {
         configLoader.load();
         messageManager.load();
+        
+        applySkinConfig();
         
         for (Npc npc : npcManager.getAllNpcs()) {
             npc.removeForAll();

@@ -288,83 +288,15 @@ public class NpcImpl extends Npc {
     
     private void applySkin(ServerPlayer npcPlayer, String value, String signature) {
         try {
-            GameProfile newProfile = new GameProfile(uuid, localName);
-            Property property = new Property("textures", value, signature);
-            
-            if (VersionUtil.is1_21_11OrLater()) {
-                applySkin1_21_11(npcPlayer, newProfile, property);
-            } else if (VersionUtil.is1_21_4OrLater()) {
-                applySkin1_21_4(npcPlayer, newProfile, property);
-            } else {
-                applySkin1_21(npcPlayer, newProfile, property);
-            }
+            PropertyMap propertyMap = new PropertyMap(
+                    ImmutableMultimap.of(
+                            "textures",
+                            new Property("textures", value, signature)
+                    )
+            );
+            npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
         } catch (Exception e) {
-        }
-    }
-    
-    private void applySkin1_21_11(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
-        try {
-            PropertyMap mutableProperties = createMutablePropertyMap();
-            if (mutableProperties != null) {
-                mutableProperties.put("textures", property);
-                Field propertiesField = GameProfile.class.getDeclaredField("properties");
-                propertiesField.setAccessible(true);
-                propertiesField.set(newProfile, mutableProperties);
-                npcPlayer.gameProfile = newProfile;
-            }
-        } catch (Exception e) {
-            applySkinFallback(npcPlayer, newProfile, property);
-        }
-    }
-    
-    private void applySkin1_21_4(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
-        try {
-            PropertyMap properties = getProfileProperties(newProfile);
-            if (propertyMapReplaceValuesMethod != null) {
-                propertyMapReplaceValuesMethod.invoke(properties, "textures", Collections.singleton(property));
-                npcPlayer.gameProfile = newProfile;
-            } else {
-                properties.put("textures", property);
-                npcPlayer.gameProfile = newProfile;
-            }
-        } catch (Exception e) {
-            applySkinFallback(npcPlayer, newProfile, property);
-        }
-    }
-    
-    private void applySkin1_21(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
-        try {
-            PropertyMap properties = getProfileProperties(newProfile);
-            properties.put("textures", property);
-            npcPlayer.gameProfile = newProfile;
-        } catch (Exception e) {
-            applySkinFallback(npcPlayer, newProfile, property);
-        }
-    }
-    
-    private void applySkinFallback(ServerPlayer npcPlayer, GameProfile newProfile, Property property) {
-        try {
-            PropertyMap mutableProperties = createMutablePropertyMap();
-            if (mutableProperties != null) {
-                mutableProperties.put("textures", property);
-                Field propertiesField = GameProfile.class.getDeclaredField("properties");
-                propertiesField.setAccessible(true);
-                propertiesField.set(newProfile, mutableProperties);
-                npcPlayer.gameProfile = newProfile;
-            }
-        } catch (Exception e) {
-        }
-    }
-    
-    private PropertyMap createMutablePropertyMap() {
-        try {
-            Constructor<?> constructor = PropertyMap.class.getConstructor();
-            PropertyMap propertyMap = (PropertyMap) constructor.newInstance();
-            propertyMap.put("test", new Property("test", "test"));
-            propertyMap.removeAll("test");
-            return propertyMap;
-        } catch (Exception e) {
-            return null;
+            Bukkit.getLogger().warning("[WooNPC] 设置皮肤失败: " + e.getMessage());
         }
     }
     

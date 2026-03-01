@@ -475,6 +475,18 @@ public class NpcData {
         
         // 转向距离
         section.set("turn-distance", turnToPlayerDistance);
+        
+        // 动作
+        for (Map.Entry<ActionTrigger, List<NpcAction.NpcActionData>> entry : actions.entrySet()) {
+            String triggerName = entry.getKey().name().toLowerCase();
+            for (int i = 0; i < entry.getValue().size(); i++) {
+                NpcAction.NpcActionData actionData = entry.getValue().get(i);
+                String path = "actions." + triggerName + "." + i;
+                section.set(path + ".type", actionData.action().getName());
+                section.set(path + ".value", actionData.value() != null ? actionData.value() : "");
+                section.set(path + ".order", actionData.order());
+            }
+        }
     }
     
     /**
@@ -567,7 +579,24 @@ public class NpcData {
         // 转向距离
         data.turnToPlayerDistance = section.getInt("turn-distance", -1);
         
+        // 动作数据暂时存储为原始格式，后续由 NpcManager 处理
+        ConfigurationSection actionsSection = section.getConfigurationSection("actions");
+        if (actionsSection != null) {
+            data.rawActionsConfig = actionsSection;
+        }
+        
         return data;
+    }
+    
+    // 临时存储原始动作配置，用于后续解析
+    private ConfigurationSection rawActionsConfig;
+    
+    public ConfigurationSection getRawActionsConfig() {
+        return rawActionsConfig;
+    }
+    
+    public void clearRawActionsConfig() {
+        this.rawActionsConfig = null;
     }
     
     @Override

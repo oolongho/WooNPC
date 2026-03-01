@@ -45,6 +45,14 @@ public class NpcInteractListener implements Listener {
         
         Player player = event.getPlayer();
         
+        String key = player.getUniqueId() + ":" + npc.getEntityId();
+        long now = System.currentTimeMillis();
+        Long lastTime = recentInteractions.get(key);
+        if (lastTime != null && now - lastTime < INTERACTION_THRESHOLD_MS) {
+            return;
+        }
+        recentInteractions.put(key, now);
+        
         if (isOnCooldown(player, npc)) {
             return;
         }

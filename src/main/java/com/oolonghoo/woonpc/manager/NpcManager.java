@@ -84,6 +84,9 @@ public class NpcManager {
                     npcsByName.put(name.toLowerCase(), npc);
                     npcsById.put(UUID.fromString(data.getId()), npc);
                     
+                    // 从原始配置加载动作
+                    loadActionsFromConfig(data, npcSection);
+                    
                     // 同步动作到 ActionManager
                     ActionManager actionManager = plugin.getActionManager();
                     String npcId = data.getId();
@@ -253,5 +256,58 @@ public class NpcManager {
      */
     public int getNpcCount() {
         return npcsByName.size();
+    }
+    
+    private void loadActionsFromConfig(NpcData data, ConfigurationSection npcSection) {
+        ConfigurationSection actionsSection = npcSection.getConfigurationSection("actions");
+        if (actionsSection == null) {
+            plugin.getLogger().info("No actions section found for NPC " + data.getName());
+            return;
+        }
+        
+        plugin.getLogger().info("Loading actions for NPC " + data.getName());
+        
+        ActionManager actionManager = plugin.getActionManager();
+        
+        for (String triggerName : actionsSection.getKeys(false)) {
+            ConfigurationSection triggerSection = actionsSection.getConfigurationSection(triggerName);
+            if (triggerSection == null) {
+                continue;
+            }
+            
+            try {
+                com.oolonghoo.woonpc.action.ActionTrigger trigger = 
+                    com.oolonghoo.woonpc.action.ActionTrigger.valueOf(triggerName.toUpperCase());
+                
+                List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> actionList = new ArrayList<>();
+                
+                for (String indexStr : triggerSection.getKeys(false)) {
+                    ConfigurationSection actionSection = triggerSection.getConfigurationSection(indexStr);
+                    if (actionSection == null) {
+                        continue;
+                    }
+                    
+                    String actionType = actionSection.getString("type", "");
+                    String value = actionSection.getString("value", "");
+                    int order = actionSection.getInt("order", 0);
+                    
+                    com.oolonghoo.woonpc.action.NpcAction action = actionManager.getAction(actionType);
+                    if (action != null) {
+                        actionList.add(new com.oolonghoo.woonpc.action.NpcAction.NpcActionData(order, action, value));
+                        plugin.getLogger().info("Loaded action: " + actionType + " for trigger: " + triggerName);
+                    } else {
+                        plugin.getLogger().warning("Unknown action type: " + actionType);
+                    }
+                }
+                
+                if (!actionList.isEmpty()) {
+                    actionList.sort(Comparator.comparingInt(com.oolonghoo.woonpc.action.NpcAction.NpcActionData::order));
+                    data.setActions(trigger, actionList);
+                    plugin.getLogger().info("Loaded " + actionList.size() + " actions for trigger " + triggerName);
+                }
+            } catch (IllegalArgumentException ignored) {
+                plugin.getLogger().warning("Invalid trigger name: " + triggerName);
+            }
+        }
     }
 }
