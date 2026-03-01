@@ -1,5 +1,12 @@
 package com.oolonghoo.woonpc.skin;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import com.oolonghoo.woonpc.skin.dto.AshconResponse;
+import com.oolonghoo.woonpc.skin.dto.MineToolsProfileResponse;
+import com.oolonghoo.woonpc.skin.dto.MineToolsUuidResponse;
+import com.oolonghoo.woonpc.skin.dto.MojangSessionResponse;
+import com.oolonghoo.woonpc.skin.dto.MojangUuidResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -40,6 +47,7 @@ public class SkinManager {
     
     private static final long CACHE_DURATION_MS = 24 * 60 * 60 * 1000L;
     
+    private final Gson gson = new Gson();
     private final HttpClient httpClient;
     private final ExecutorService executor;
     private final Map<String, SkinData> skinCache = new ConcurrentHashMap<>();
@@ -509,22 +517,14 @@ public class SkinManager {
         }
         
         try {
-            String idKey = "\"id\":\"";
-            int idStart = json.indexOf(idKey);
-            if (idStart == -1) {
+            MojangUuidResponse response = gson.fromJson(json, MojangUuidResponse.class);
+            if (response == null || response.getId() == null) {
+                plugin.getLogger().warning("Mojang UUID API 响应格式异常: " + json);
                 return null;
             }
-            
-            idStart += idKey.length();
-            int idEnd = json.indexOf("\"", idStart);
-            if (idEnd == -1) {
-                return null;
-            }
-            
-            String idString = json.substring(idStart, idEnd);
-            return parseUUID(idString);
-            
-        } catch (Exception e) {
+            return parseUUID(response.getId());
+        } catch (JsonSyntaxException e) {
+            plugin.getLogger().log(Level.WARNING, "解析 Mojang UUID 响应失败: " + json, e);
             return null;
         }
     }
@@ -535,39 +535,25 @@ public class SkinManager {
         }
         
         try {
-            String valueKey = "\"value\":\"";
-            String signatureKey = "\"signature\":\"";
-            
-            int valueStart = json.indexOf(valueKey);
-            if (valueStart == -1) {
+            MojangSessionResponse response = gson.fromJson(json, MojangSessionResponse.class);
+            if (response == null || response.getProperties() == null || response.getProperties().isEmpty()) {
+                plugin.getLogger().warning("Mojang Session API 响应格式异常: " + json);
                 return null;
             }
-            valueStart += valueKey.length();
-            int valueEnd = json.indexOf("\"", valueStart);
-            if (valueEnd == -1) {
-                return null;
+            
+            for (MojangSessionResponse.Property property : response.getProperties()) {
+                if ("textures".equals(property.getName())) {
+                    SkinData skinData = new SkinData(identifier, variant, property.getValue(), property.getSignature());
+                    skinData.setCacheDuration(CACHE_DURATION_MS);
+                    cacheSkin(identifier, skinData);
+                    return skinData;
+                }
             }
-            String value = json.substring(valueStart, valueEnd);
             
-            int signatureStart = json.indexOf(signatureKey, valueEnd);
-            if (signatureStart == -1) {
-                return null;
-            }
-            signatureStart += signatureKey.length();
-            int signatureEnd = json.indexOf("\"", signatureStart);
-            if (signatureEnd == -1) {
-                return null;
-            }
-            String signature = json.substring(signatureStart, signatureEnd);
-            
-            SkinData skinData = new SkinData(identifier, variant, value, signature);
-            skinData.setCacheDuration(CACHE_DURATION_MS);
-            
-            cacheSkin(identifier, skinData);
-            
-            return skinData;
-            
-        } catch (Exception e) {
+            plugin.getLogger().warning("Mojang Session API 响应中未找到 textures 属性: " + json);
+            return null;
+        } catch (JsonSyntaxException e) {
+            plugin.getLogger().log(Level.WARNING, "解析 Mojang Session 响应失败: " + json, e);
             return null;
         }
     }
@@ -578,44 +564,18 @@ public class SkinManager {
         }
         
         try {
-            String texturesKey = "\"textures\"";
-            int texturesStart = json.indexOf(texturesKey);
-            if (texturesStart == -1) {
+            AshconResponse response = gson.fromJson(json, AshconResponse.class);
+            if (response == null || response.getTextures() == null || response.getTextures().getRaw() == null) {
+                plugin.getLogger().warning("Ashcon API 响应格式异常: " + json);
                 return null;
             }
             
-            String valueKey = "\"value\":\"";
-            String signatureKey = "\"signature\":\"";
-            
-            int valueStart = json.indexOf(valueKey, texturesStart);
-            if (valueStart == -1) {
-                return null;
-            }
-            valueStart += valueKey.length();
-            int valueEnd = json.indexOf("\"", valueStart);
-            if (valueEnd == -1) {
-                return null;
-            }
-            String value = json.substring(valueStart, valueEnd);
-            
-            int signatureStart = json.indexOf(signatureKey, valueEnd);
-            if (signatureStart == -1) {
-                return null;
-            }
-            signatureStart += signatureKey.length();
-            int signatureEnd = json.indexOf("\"", signatureStart);
-            if (signatureEnd == -1) {
-                return null;
-            }
-            String signature = json.substring(signatureStart, signatureEnd);
-            
-            SkinData skinData = new SkinData(playerName, variant, value, signature);
+            AshconResponse.RawTexture raw = response.getTextures().getRaw();
+            SkinData skinData = new SkinData(playerName, variant, raw.getValue(), raw.getSignature());
             skinData.setCacheDuration(CACHE_DURATION_MS);
-            
             return skinData;
-            
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "解析 Ashcon 响应失败", e);
+        } catch (JsonSyntaxException e) {
+            plugin.getLogger().log(Level.WARNING, "解析 Ashcon 响应失败: " + json, e);
             return null;
         }
     }
@@ -626,22 +586,14 @@ public class SkinManager {
         }
         
         try {
-            String idKey = "\"id\":\"";
-            int idStart = json.indexOf(idKey);
-            if (idStart == -1) {
+            MineToolsUuidResponse response = gson.fromJson(json, MineToolsUuidResponse.class);
+            if (response == null || response.getId() == null) {
+                plugin.getLogger().warning("MineTools UUID API 响应格式异常: " + json);
                 return null;
             }
-            
-            idStart += idKey.length();
-            int idEnd = json.indexOf("\"", idStart);
-            if (idEnd == -1) {
-                return null;
-            }
-            
-            String idString = json.substring(idStart, idEnd);
-            return parseUUID(idString);
-            
-        } catch (Exception e) {
+            return parseUUID(response.getId());
+        } catch (JsonSyntaxException e) {
+            plugin.getLogger().log(Level.WARNING, "解析 MineTools UUID 响应失败: " + json, e);
             return null;
         }
     }
@@ -652,37 +604,24 @@ public class SkinManager {
         }
         
         try {
-            String valueKey = "\"value\":\"";
-            String signatureKey = "\"signature\":\"";
-            
-            int valueStart = json.indexOf(valueKey);
-            if (valueStart == -1) {
+            MineToolsProfileResponse response = gson.fromJson(json, MineToolsProfileResponse.class);
+            if (response == null || response.getProperties() == null || response.getProperties().length == 0) {
+                plugin.getLogger().warning("MineTools Profile API 响应格式异常: " + json);
                 return null;
             }
-            valueStart += valueKey.length();
-            int valueEnd = json.indexOf("\"", valueStart);
-            if (valueEnd == -1) {
-                return null;
+            
+            for (MineToolsProfileResponse.Property property : response.getProperties()) {
+                if ("textures".equals(property.getName())) {
+                    SkinData skinData = new SkinData(playerName, variant, property.getValue(), property.getSignature());
+                    skinData.setCacheDuration(CACHE_DURATION_MS);
+                    return skinData;
+                }
             }
-            String value = json.substring(valueStart, valueEnd);
             
-            int signatureStart = json.indexOf(signatureKey, valueEnd);
-            if (signatureStart == -1) {
-                return null;
-            }
-            signatureStart += signatureKey.length();
-            int signatureEnd = json.indexOf("\"", signatureStart);
-            if (signatureEnd == -1) {
-                return null;
-            }
-            String signature = json.substring(signatureStart, signatureEnd);
-            
-            SkinData skinData = new SkinData(playerName, variant, value, signature);
-            skinData.setCacheDuration(CACHE_DURATION_MS);
-            
-            return skinData;
-            
-        } catch (Exception e) {
+            plugin.getLogger().warning("MineTools Profile API 响应中未找到 textures 属性: " + json);
+            return null;
+        } catch (JsonSyntaxException e) {
+            plugin.getLogger().log(Level.WARNING, "解析 MineTools Profile 响应失败: " + json, e);
             return null;
         }
     }
