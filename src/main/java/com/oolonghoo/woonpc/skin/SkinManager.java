@@ -543,6 +543,11 @@ public class SkinManager {
             
             for (MojangSessionResponse.Property property : response.getProperties()) {
                 if ("textures".equals(property.getName())) {
+                    if (property.getValue() == null || property.getValue().isEmpty() ||
+                        property.getSignature() == null || property.getSignature().isEmpty()) {
+                        plugin.getLogger().warning("Mojang Session API 响应中 textures 属性值无效: " + json);
+                        return null;
+                    }
                     SkinData skinData = new SkinData(identifier, variant, property.getValue(), property.getSignature());
                     skinData.setCacheDuration(CACHE_DURATION_MS);
                     cacheSkin(identifier, skinData);
@@ -571,6 +576,11 @@ public class SkinManager {
             }
             
             AshconResponse.RawTexture raw = response.getTextures().getRaw();
+            if (raw.getValue() == null || raw.getValue().isEmpty() ||
+                raw.getSignature() == null || raw.getSignature().isEmpty()) {
+                plugin.getLogger().warning("Ashcon API 响应中纹理值无效: " + json);
+                return null;
+            }
             SkinData skinData = new SkinData(playerName, variant, raw.getValue(), raw.getSignature());
             skinData.setCacheDuration(CACHE_DURATION_MS);
             return skinData;
@@ -612,6 +622,11 @@ public class SkinManager {
             
             for (MineToolsProfileResponse.Property property : response.getProperties()) {
                 if ("textures".equals(property.getName())) {
+                    if (property.getValue() == null || property.getValue().isEmpty() ||
+                        property.getSignature() == null || property.getSignature().isEmpty()) {
+                        plugin.getLogger().warning("MineTools Profile API 响应中 textures 属性值无效: " + json);
+                        return null;
+                    }
                     SkinData skinData = new SkinData(playerName, variant, property.getValue(), property.getSignature());
                     skinData.setCacheDuration(CACHE_DURATION_MS);
                     return skinData;
