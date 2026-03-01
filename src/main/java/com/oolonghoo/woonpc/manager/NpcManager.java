@@ -147,21 +147,37 @@ public class NpcManager {
      * @return 创建的NPC，如果已存在则返回null
      */
     public Npc createNpc(String name, Location location) {
+        return createNpc(name, location, org.bukkit.entity.EntityType.PLAYER);
+    }
+    
+    /**
+     * 创建NPC
+     * 
+     * @param name NPC名称
+     * @param location 位置
+     * @param entityType 实体类型
+     * @return 创建的NPC，如果已存在则返回null
+     */
+    public Npc createNpc(String name, Location location, org.bukkit.entity.EntityType entityType) {
         if (npcsByName.containsKey(name.toLowerCase())) {
             return null;
         }
         
         NpcData data = new NpcData(name, null, location);
+        data.setType(entityType);
         Npc npc = new NpcImpl(data);
         npc.create();
         
         npcsByName.put(name.toLowerCase(), npc);
         npcsById.put(UUID.fromString(data.getId()), npc);
         
+        // 更新世界缓存
+        plugin.getVisibilityTracker().addNpcToWorldCache(npc);
+        
         // 立即保存
         saveNpcs();
         
-        debug.debug("创建NPC: " + name);
+        debug.debug("创建NPC: " + name + " (类型: " + entityType.name() + ")");
         return npc;
     }
 
@@ -178,6 +194,9 @@ public class NpcManager {
         }
         
         npcsById.remove(UUID.fromString(npc.getData().getId()));
+        
+        // 从世界缓存移除
+        plugin.getVisibilityTracker().removeNpcFromWorldCache(npc);
         
         // 移除所有玩家的NPC
         npc.removeForAll();

@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * 头部旋转追踪器
- * 让 NPC 的头部追踪附近玩家的位置
+ * 让 NPC 的头部视角跟随附近玩家的位置
  * 
  * @author oolongho
  */

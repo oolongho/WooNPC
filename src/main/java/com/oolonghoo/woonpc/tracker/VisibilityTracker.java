@@ -18,6 +18,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 可见性追踪器
  * 定期检测玩家与 NPC 的距离，自动生成或移除 NPC
  * 
+ * 优化:
+ * - 按世界分组 NPC，避免跨世界检测
+ * - 缓存玩家位置，减少 getLocation() 调用
+ * - 批量处理可见性更新
+ * 
  * @author oolongho
  */
 public class VisibilityTracker implements Runnable {
@@ -35,6 +40,16 @@ public class VisibilityTracker implements Runnable {
     // 玩家加入延迟时间（tick）
     private int joinDelay;
     
+    // 世界 -> NPC 列表缓存
+    private final Map<String, List<Npc>> worldNpcCache = new ConcurrentHashMap<>();
+    
+    // 玩家位置缓存 (UUID -> Location)
+    private final Map<UUID, Location> playerLocationCache = new ConcurrentHashMap<>();
+    
+    // 缓存更新计数器
+    private int cacheUpdateCounter = 0;
+    private static final int CACHE_UPDATE_INTERVAL = 20; // 每 20 次检测更新一次世界缓存
+
     public VisibilityTracker(WooNPC plugin) {
         this.plugin = plugin;
         this.joinDelayPlayers = ConcurrentHashMap.newKeySet();
@@ -52,6 +67,9 @@ public class VisibilityTracker implements Runnable {
         int interval = config.getVisibilityCheckInterval();
         this.task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this, interval, interval);
         
+        // 初始化世界缓存
+        rebuildWorldCache();
+        
         plugin.getLogger().info("可见性追踪器已启动，检测间隔: " + interval + " tick，可见距离: " + defaultVisibilityDistance);
     }
 
@@ -64,26 +82,104 @@ public class VisibilityTracker implements Runnable {
             task = null;
         }
         joinDelayPlayers.clear();
+        playerLocationCache.clear();
+        worldNpcCache.clear();
+    }
+    
+    /**
+     * 重建世界缓存
+     */
+    public void rebuildWorldCache() {
+        worldNpcCache.clear();
+        
+        for (Npc npc : plugin.getAllNpcs()) {
+            NpcData data = npc.getData();
+            Location loc = data.getLocation();
+            if (loc != null && loc.getWorld() != null) {
+                String worldName = loc.getWorld().getName();
+                worldNpcCache.computeIfAbsent(worldName, k -> new ArrayList<>()).add(npc);
+            }
+        }
+    }
+    
+    /**
+     * 添加 NPC 到世界缓存
+     */
+    public void addNpcToWorldCache(Npc npc) {
+        NpcData data = npc.getData();
+        Location loc = data.getLocation();
+        if (loc != null && loc.getWorld() != null) {
+            String worldName = loc.getWorld().getName();
+            worldNpcCache.computeIfAbsent(worldName, k -> new ArrayList<>()).add(npc);
+        }
+    }
+    
+    /**
+     * 从世界缓存移除 NPC
+     */
+    public void removeNpcFromWorldCache(Npc npc) {
+        for (List<Npc> npcs : worldNpcCache.values()) {
+            npcs.remove(npc);
+        }
     }
 
     @Override
     public void run() {
+        // 定期重建世界缓存
+        cacheUpdateCounter++;
+        if (cacheUpdateCounter >= CACHE_UPDATE_INTERVAL) {
+            cacheUpdateCounter = 0;
+            rebuildWorldCache();
+        }
+        
+        // 更新玩家位置缓存
         for (Player player : Bukkit.getOnlinePlayers()) {
-            // 跳过正在加入延迟的玩家
-            if (joinDelayPlayers.contains(player.getUniqueId())) {
-                continue;
-            }
-            
-            // 检查玩家是否有效
-            if (!player.isOnline() || player.getWorld() == null) {
-                continue;
-            }
-            
-            // 更新所有 NPC 对该玩家的可见性
-            for (Npc npc : plugin.getAllNpcs()) {
-                checkAndUpdateVisibility(npc, player);
+            if (player.getWorld() != null) {
+                playerLocationCache.put(player.getUniqueId(), player.getLocation().clone());
             }
         }
+        
+        // 按世界处理
+        for (Map.Entry<String, List<Npc>> entry : worldNpcCache.entrySet()) {
+            String worldName = entry.getKey();
+            List<Npc> npcs = entry.getValue();
+            
+            if (npcs.isEmpty()) continue;
+            
+            // 获取该世界的玩家
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) continue;
+            
+            for (Player player : world.getPlayers()) {
+                // 跳过正在加入延迟的玩家
+                if (joinDelayPlayers.contains(player.getUniqueId())) {
+                    continue;
+                }
+                
+                // 检查玩家是否有效
+                if (!player.isOnline()) {
+                    continue;
+                }
+                
+                // 使用缓存的位置
+                Location playerLocation = playerLocationCache.get(player.getUniqueId());
+                if (playerLocation == null) {
+                    playerLocation = player.getLocation();
+                }
+                
+                // 更新该世界中所有 NPC 对该玩家的可见性
+                for (Npc npc : npcs) {
+                    checkAndUpdateVisibility(npc, player, playerLocation);
+                }
+            }
+        }
+        
+        // 清理离线玩家的位置缓存
+        Set<UUID> onlinePlayers = new HashSet<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            onlinePlayers.add(player.getUniqueId());
+        }
+        playerLocationCache.keySet().retainAll(onlinePlayers);
     }
     
     /**
@@ -93,7 +189,22 @@ public class VisibilityTracker implements Runnable {
      * @param player 玩家
      */
     public void checkAndUpdateVisibility(@NotNull Npc npc, @NotNull Player player) {
-        boolean shouldBeVisible = shouldBeVisible(npc, player);
+        Location playerLocation = playerLocationCache.get(player.getUniqueId());
+        if (playerLocation == null) {
+            playerLocation = player.getLocation();
+        }
+        checkAndUpdateVisibility(npc, player, playerLocation);
+    }
+    
+    /**
+     * 检查并更新 NPC 对玩家的可见性（使用缓存的位置）
+     * 
+     * @param npc NPC 对象
+     * @param player 玩家
+     * @param playerLocation 玩家位置（缓存）
+     */
+    private void checkAndUpdateVisibility(@NotNull Npc npc, @NotNull Player player, @NotNull Location playerLocation) {
+        boolean shouldBeVisible = shouldBeVisible(npc, player, playerLocation);
         boolean wasVisible = npc.isShownFor(player);
         
         if (shouldBeVisible && !wasVisible) {
@@ -112,7 +223,7 @@ public class VisibilityTracker implements Runnable {
      * @param player 玩家
      * @return 是否应该可见
      */
-    private boolean shouldBeVisible(@NotNull Npc npc, @NotNull Player player) {
+    private boolean shouldBeVisible(@NotNull Npc npc, @NotNull Player player, @NotNull Location playerLocation) {
         NpcData data = npc.getData();
         Location npcLocation = data.getLocation();
         
@@ -122,13 +233,12 @@ public class VisibilityTracker implements Runnable {
         }
         
         // 检查玩家位置是否有效
-        Location playerLocation = player.getLocation();
         if (playerLocation.getWorld() == null) {
             return false;
         }
         
-        // 检查是否在同一世界
-        if (!npcLocation.getWorld().getName().equalsIgnoreCase(playerLocation.getWorld().getName())) {
+        // 检查是否在同一世界（使用引用比较，因为已经按世界分组）
+        if (npcLocation.getWorld() != playerLocation.getWorld()) {
             return false;
         }
         
@@ -190,7 +300,15 @@ public class VisibilityTracker implements Runnable {
      * @param npc NPC 对象
      */
     public void checkAndUpdateVisibilityForAll(@NotNull Npc npc) {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        NpcData data = npc.getData();
+        Location npcLocation = data.getLocation();
+        
+        if (npcLocation == null || npcLocation.getWorld() == null) {
+            return;
+        }
+        
+        World world = npcLocation.getWorld();
+        for (Player player : world.getPlayers()) {
             if (!joinDelayPlayers.contains(player.getUniqueId())) {
                 checkAndUpdateVisibility(npc, player);
             }
@@ -226,5 +344,14 @@ public class VisibilityTracker implements Runnable {
      */
     public int getJoinDelayPlayerCount() {
         return joinDelayPlayers.size();
+    }
+    
+    /**
+     * 获取世界缓存统计信息
+     * 
+     * @return 世界数量
+     */
+    public int getWorldCacheSize() {
+        return worldNpcCache.size();
     }
 }

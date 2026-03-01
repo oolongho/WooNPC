@@ -5,10 +5,17 @@ api-version: '1.21'
 author: oolongho
 description: 轻量级高性能 NPC 插件
 
+softdepend:
+  - PlaceholderAPI
+  - SkinsRestorer
+  - WooHolograms
+  - DecentHolograms
+  - FancyHolograms
+
 commands:
   woonpc:
     description: WooNPC 主命令
-    usage: /woonpc <create|remove|skin|glowing|hologram|turn|equipment|pose|action|list|info|reload>
+    usage: /woonpc <create|remove|skin|glowing|hologram|turn|equipment|pose|scale|effect|action|list|info|reload>
     permission: woonpc.use
     aliases: [npc, wnpc]
 
@@ -26,6 +33,8 @@ permissions:
       woonpc.action: true
       woonpc.equipment: true
       woonpc.pose: true
+      woonpc.scale: true
+      woonpc.effect: true
       woonpc.edit: true
       woonpc.reload: true
   
@@ -63,6 +72,14 @@ permissions:
   
   woonpc.pose:
     description: 设置姿势权限
+    default: op
+  
+  woonpc.scale:
+    description: 设置缩放权限
+    default: op
+  
+  woonpc.effect:
+    description: 设置效果权限
     default: op
   
   woonpc.edit:

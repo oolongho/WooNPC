@@ -10,6 +10,7 @@ import io.papermc.paper.adventure.PaperAdventure;
 import net.minecraft.Optionull;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.Packet;
@@ -563,8 +564,12 @@ public class NpcImpl extends Npc {
         }
         
         if (npc instanceof LivingEntity) {
-            // Scale attribute removed due to version compatibility issues
+            // Apply scale attribute
+            applyScale();
         }
+        
+        // Apply effects
+        applyEffects();
         
         ClientboundBundlePacket bundlePacket = new ClientboundBundlePacket(packets);
         runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
@@ -832,6 +837,70 @@ public class NpcImpl extends Npc {
     
     public NpcPose getPose() {
         return NpcPose.fromConfigName(data.getPose());
+    }
+    
+    private void applyScale() {
+        if (!(npc instanceof LivingEntity)) {
+            return;
+        }
+        
+        float scale = data.getScale();
+        if (scale == 1.0f) {
+            return;
+        }
+        
+        try {
+            LivingEntity livingEntity = (LivingEntity) npc;
+            
+            Holder.Reference<net.minecraft.world.entity.ai.attributes.Attribute> scaleAttribute = 
+                    BuiltInRegistries.ATTRIBUTE.get(Identifier.parse("minecraft:scale")).get();
+            
+            if (scaleAttribute != null) {
+                net.minecraft.world.entity.ai.attributes.AttributeInstance attributeInstance = 
+                        new net.minecraft.world.entity.ai.attributes.AttributeInstance(scaleAttribute, (a) -> {});
+                attributeInstance.setBaseValue(scale);
+                
+                ClientboundUpdateAttributesPacket updateAttributesPacket = 
+                        new ClientboundUpdateAttributesPacket(npc.getId(), List.of(attributeInstance));
+                
+                for (Map.Entry<UUID, Boolean> entry : isVisibleForPlayer.entrySet()) {
+                    if (entry.getValue()) {
+                        Player player = Bukkit.getPlayer(entry.getKey());
+                        if (player != null) {
+                            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+                            runOnPlayerScheduler(player, 
+                                    () -> serverPlayer.connection.send(updateAttributesPacket));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Bukkit.getLogger().warning("[WooNPC] Failed to apply scale: " + e.getMessage());
+        }
+    }
+    
+    private void applyEffects() {
+        Set<NpcEffect> effects = data.getEffects();
+        if (effects.isEmpty()) {
+            return;
+        }
+        
+        for (NpcEffect effect : effects) {
+            switch (effect) {
+                case ON_FIRE:
+                    npc.setSharedFlagOnFire(true);
+                    break;
+                case INVISIBLE:
+                    npc.setInvisible(true);
+                    break;
+                case SHAKING:
+                    npc.setTicksFrozen(npc.getTicksRequiredToFreeze());
+                    break;
+                case SILENT:
+                    npc.setSilent(true);
+                    break;
+            }
+        }
     }
     
     private void runOnPlayerScheduler(Player player, Runnable task) {

@@ -25,7 +25,7 @@ npc:
     location: "&7位置: &f{world}, {x}, {y}, {z}"
     skin: "&7皮肤: &f{skin}"
     glowing: "&7发光: &f{glowing}"
-    turn-to-player: "&7头部追踪: &f{turn_to_player}"
+    turn-to-player: "&7视角跟随: &f{turn_to_player}"
     show-in-tab: "&7显示在Tab: &f{show_in_tab}"
     hologram: "&7全息文字: &f{hologram_lines}"
     footer: "&e===================================="
@@ -66,10 +66,10 @@ hologram:
     format: "&f{index}. &r{text}"
     empty: "&c该NPC没有全息文字"
 
-# 头部追踪
-turn-to-player:
-  enabled: "&a已启用NPC {name} 的头部追踪"
-  disabled: "&a已禁用NPC {name} 的头部追踪"
+# 视角跟随
+turn:
+  enabled: "&a已启用NPC {name} 的视角跟随"
+  disabled: "&a已禁用NPC {name} 的视角跟随"
 
 # 显示在Tab
 show-in-tab:
@@ -85,7 +85,20 @@ equipment:
 # 姿势
 pose:
   set: "&a成功设置NPC {name} 的姿势为: {pose}"
+  invalid: "&c无效的姿势！可用: {poses}"
   invalid-pose: "&c无效的姿势！可用: {poses}"
+
+# 缩放
+scale:
+  set: "&a成功设置NPC {name} 的缩放为: {scale}"
+  invalid-number: "&c无效的数字: {input}"
+  invalid-range: "&c缩放必须在 0.1 到 10.0 之间"
+
+# 效果
+effect:
+  enabled: "&a已启用NPC {name} 的 {effect} 效果"
+  disabled: "&a已禁用NPC {name} 的 {effect} 效果"
+  invalid: "&c无效的效果！可用: {effects}"
 
 # 动作
 action:
@@ -122,10 +135,12 @@ help:
   skin: "&e/{command} skin <名称> <皮肤/@mirror> &7- 设置皮肤"
   glowing: "&e/{command} glowing <名称> <true/false> [颜色] &7- 设置发光"
   hologram: "&e/{command} hologram <名称> <add/remove/set/clear/list> [内容] &7- 全息文字"
-  turn: "&e/{command} turn_to_player <名称> <true/false> &7- 头部追踪"
+  turn: "&e/{command} turn_to_player <名称> <true/false> &7- 视角跟随"
   tab: "&e/{command} show_in_tab <名称> <true/false> &7- Tab显示"
   equipment: "&e/{command} equipment <名称> <槽位> [@hand] &7- 设置装备"
   pose: "&e/{command} pose <名称> <姿势> &7- 设置姿势"
+  scale: "&e/{command} scale <名称> <比例> &7- 设置缩放"
+  effect: "&e/{command} effect <名称> <效果> <true/false> &7- 设置效果"
   action: "&e/{command} action <名称> <触发器> <add/remove/list/clear> [类型] [值] &7- 动作"
   move: "&e/{command} movehere <名称> &7- 移动到此处"
   copy: "&e/{command} copy <名称> <新名称> &7- 复制NPC"

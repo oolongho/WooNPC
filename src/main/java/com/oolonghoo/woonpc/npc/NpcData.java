@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * NPC 数据模型
@@ -60,6 +61,9 @@ public class NpcData {
     // 缩放
     private float scale;
     
+    // 实体效果
+    private Set<NpcEffect> effects;
+    
     // 动作 (触发器 -> 动作列表)
     private Map<ActionTrigger, List<NpcAction.NpcActionData>> actions;
     
@@ -93,6 +97,7 @@ public class NpcData {
         this.equipment = new ConcurrentHashMap<>();
         this.hologramLines = new ArrayList<>();
         this.pose = "STANDING";
+        this.effects = ConcurrentHashMap.newKeySet();
         this.actions = new ConcurrentHashMap<>();
         this.dirty = true;
     }
@@ -131,6 +136,7 @@ public class NpcData {
         this.hologramLines = hologramLines != null ? new ArrayList<>(hologramLines) : new ArrayList<>();
         this.pose = pose;
         this.scale = scale;
+        this.effects = ConcurrentHashMap.newKeySet();
         this.actions = new ConcurrentHashMap<>();
         this.dirty = true;
     }
@@ -382,6 +388,35 @@ public class NpcData {
         return this;
     }
     
+    public Set<NpcEffect> getEffects() {
+        return effects;
+    }
+    
+    public NpcData setEffects(Set<NpcEffect> effects) {
+        this.effects = effects != null ? ConcurrentHashMap.newKeySet() : ConcurrentHashMap.newKeySet();
+        if (effects != null) {
+            this.effects.addAll(effects);
+        }
+        this.dirty = true;
+        return this;
+    }
+    
+    public NpcData addEffect(NpcEffect effect) {
+        this.effects.add(effect);
+        this.dirty = true;
+        return this;
+    }
+    
+    public NpcData removeEffect(NpcEffect effect) {
+        this.effects.remove(effect);
+        this.dirty = true;
+        return this;
+    }
+    
+    public boolean hasEffect(NpcEffect effect) {
+        return effects.contains(effect);
+    }
+    
     public NpcData setActions(Map<ActionTrigger, List<NpcAction.NpcActionData>> actions) {
         this.actions = actions != null ? new ConcurrentHashMap<>(actions) : new ConcurrentHashMap<>();
         this.dirty = true;
@@ -469,6 +504,12 @@ public class NpcData {
         
         // 缩放
         section.set("scale", scale);
+        
+        // 效果
+        List<String> effectList = effects.stream()
+                .map(NpcEffect::getName)
+                .collect(Collectors.toList());
+        section.set("effects", effectList);
         
         // 可见距离
         section.set("visibility-distance", visibilityDistance);
@@ -572,6 +613,15 @@ public class NpcData {
         
         // 缩放
         data.scale = (float) section.getDouble("scale", 1.0);
+        
+        // 效果
+        List<String> effectList = section.getStringList("effects");
+        for (String effectName : effectList) {
+            NpcEffect effect = NpcEffect.getByName(effectName);
+            if (effect != null) {
+                data.effects.add(effect);
+            }
+        }
         
         // 可见距离
         data.visibilityDistance = section.getInt("visibility-distance", -1);

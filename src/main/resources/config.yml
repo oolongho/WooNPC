@@ -23,7 +23,7 @@ npc:
   # 是否默认显示在Tab列表
   show-in-tab-by-default: false
   
-  # 是否默认启用头部追踪
+  # 是否默认启用视角跟随
   turn-to-player-by-default: true
 
 # 全息文字设置
@@ -74,7 +74,7 @@ performance:
   # 可见性检测间隔 (tick)
   visibility-check-interval: 20
   
-  # 头部追踪更新间隔 (tick)
+  # 视角跟随更新间隔 (tick)
   look-update-interval: 2
   
   # 最大NPC数量 (0=无限制)

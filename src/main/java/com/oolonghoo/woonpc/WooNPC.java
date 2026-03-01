@@ -2,12 +2,17 @@ package com.oolonghoo.woonpc;
 
 import com.oolonghoo.woonpc.action.ActionManager;
 import com.oolonghoo.woonpc.action.types.ConsoleCommandAction;
+import com.oolonghoo.woonpc.action.types.ExecuteRandomActionAction;
 import com.oolonghoo.woonpc.action.types.MessageAction;
+import com.oolonghoo.woonpc.action.types.NeedPermissionAction;
 import com.oolonghoo.woonpc.action.types.PlayerCommandAction;
+import com.oolonghoo.woonpc.action.types.PlayerCommandAsOpAction;
 import com.oolonghoo.woonpc.action.types.PlaySoundAction;
+import com.oolonghoo.woonpc.action.types.WaitAction;
 import com.oolonghoo.woonpc.command.MainCommand;
 import com.oolonghoo.woonpc.config.ConfigLoader;
 import com.oolonghoo.woonpc.config.MessageManager;
+import com.oolonghoo.woonpc.hook.HologramHook;
 import com.oolonghoo.woonpc.listener.NpcInteractListener;
 import com.oolonghoo.woonpc.listener.PlayerJoinListener;
 import com.oolonghoo.woonpc.listener.PlayerQuitListener;
@@ -55,6 +60,9 @@ public class WooNPC extends JavaPlugin {
     // 皮肤管理器
     private SkinManager skinManager;
     
+    // 全息图 Hook
+    private HologramHook hologramHook;
+    
     // NPC 存储 (临时保留用于兼容)
     private final Map<String, Npc> npcs = new ConcurrentHashMap<>();
     
@@ -81,6 +89,9 @@ public class WooNPC extends JavaPlugin {
         
         // 初始化皮肤管理器
         this.skinManager = new SkinManager(this);
+        
+        // 初始化全息图 Hook
+        this.hologramHook = new HologramHook(this);
         
         // 应用皮肤 API 配置
         applySkinConfig();
@@ -131,6 +142,11 @@ public class WooNPC extends JavaPlugin {
             skinManager.shutdown();
         }
         
+        // 关闭全息图 Hook
+        if (hologramHook != null) {
+            hologramHook.shutdown();
+        }
+        
         getLogger().info("WooNPC 已禁用!");
     }
     
@@ -159,6 +175,10 @@ public class WooNPC extends JavaPlugin {
         actionManager.registerAction(new PlayerCommandAction());
         actionManager.registerAction(new ConsoleCommandAction());
         actionManager.registerAction(new PlaySoundAction());
+        actionManager.registerAction(new WaitAction());
+        actionManager.registerAction(new ExecuteRandomActionAction());
+        actionManager.registerAction(new NeedPermissionAction());
+        actionManager.registerAction(new PlayerCommandAsOpAction());
         
         getLogger().info("已注册 " + actionManager.getAllActions().size() + " 个默认动作类型");
     }
@@ -346,6 +366,10 @@ public class WooNPC extends JavaPlugin {
      */
     public SkinManager getSkinManager() {
         return skinManager;
+    }
+    
+    public HologramHook getHologramHook() {
+        return hologramHook;
     }
     
     private void applySkinConfig() {

@@ -9,6 +9,7 @@ import com.oolonghoo.woonpc.manager.NpcManager;
 import com.oolonghoo.woonpc.npc.GlowingColor;
 import com.oolonghoo.woonpc.npc.Npc;
 import com.oolonghoo.woonpc.npc.NpcData;
+import com.oolonghoo.woonpc.npc.NpcEffect;
 import com.oolonghoo.woonpc.npc.NpcEquipmentSlot;
 import com.oolonghoo.woonpc.npc.NpcImpl;
 import com.oolonghoo.woonpc.npc.NpcPose;
@@ -78,6 +79,10 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 return handleEquipment(sender, args);
             case "pose":
                 return handlePose(sender, args);
+            case "scale":
+                return handleScale(sender, args);
+            case "effect":
+                return handleEffect(sender, args);
             case "action":
                 return handleAction(sender, args);
             case "movehere":
@@ -129,11 +134,11 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
 
         // 解析 --type 参数
-        EntityType entityType = EntityType.PLAYER;
+        org.bukkit.entity.EntityType entityType = org.bukkit.entity.EntityType.PLAYER;
         for (int i = 2; i < args.length - 1; i++) {
             if (args[i].equalsIgnoreCase("--type")) {
                 try {
-                    entityType = EntityType.valueOf(args[i + 1].toUpperCase());
+                    entityType = org.bukkit.entity.EntityType.valueOf(args[i + 1].toUpperCase());
                 } catch (IllegalArgumentException e) {
                     sender.sendMessage(msg.getWithPrefix("npc.invalid-type", "type", args[i + 1]));
                     return true;
@@ -141,19 +146,12 @@ public class MainCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        // 创建 NPC 数据
-        NpcData data = new NpcData(name, player.getUniqueId(), player.getLocation());
-        data.setType(entityType);
-
-        // 通过 NpcManager 创建 NPC
-        Npc npc = npcManager.createNpc(name, player.getLocation());
+        // 通过 NpcManager 创建 NPC (带实体类型)
+        Npc npc = npcManager.createNpc(name, player.getLocation(), entityType);
         if (npc == null) {
             sender.sendMessage(msg.getWithPrefix("npc.limit-reached"));
             return true;
         }
-        
-        // 设置类型
-        npc.getData().setType(entityType);
         
         // 生成给所有玩家
         npc.spawnForAll();
@@ -464,7 +462,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * 设置头部追踪
+     * 设置视角跟随
      * 用法: /npc turn_to_player <名称> <true/false>
      */
     private boolean handleTurnToPlayer(CommandSender sender, String[] args) {
@@ -613,6 +611,98 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         
         sender.sendMessage(msg.getWithPrefix("pose.set", "name", name, "pose", pose.getConfigName()));
         npcManager.saveNpcs();
+        return true;
+    }
+    
+    /**
+     * 设置缩放
+     * 用法: /npc scale <名称> <比例>
+     */
+    private boolean handleScale(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("woonpc.scale")) {
+            sender.sendMessage(msg.getWithPrefix("no-permission"));
+            return true;
+        }
+        
+        if (args.length < 3) {
+            sender.sendMessage(msg.getWithPrefix("help.scale"));
+            return true;
+        }
+        
+        String name = args[1];
+        Npc npc = npcManager.getNpc(name);
+        if (npc == null) {
+            sender.sendMessage(msg.getWithPrefix("npc-not-found", "npc", name));
+            return true;
+        }
+        
+        float scale;
+        try {
+            scale = Float.parseFloat(args[2]);
+            if (scale < 0.1f || scale > 10.0f) {
+                sender.sendMessage(msg.getWithPrefix("scale.invalid-range"));
+                return true;
+            }
+        } catch (NumberFormatException e) {
+            sender.sendMessage(msg.getWithPrefix("scale.invalid-number", "input", args[2]));
+            return true;
+        }
+        
+        npc.getData().setScale(scale);
+        npc.removeForAll();
+        npc.spawnForAll();
+        npcManager.saveNpcs();
+        
+        sender.sendMessage(msg.getWithPrefix("scale.set", "name", name, "scale", String.valueOf(scale)));
+        return true;
+    }
+    
+    /**
+     * 设置实体效果
+     * 用法: /npc effect <名称> <效果> <true/false>
+     */
+    private boolean handleEffect(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("woonpc.effect")) {
+            sender.sendMessage(msg.getWithPrefix("no-permission"));
+            return true;
+        }
+        
+        if (args.length < 4) {
+            sender.sendMessage(msg.getWithPrefix("help.effect"));
+            return true;
+        }
+        
+        String name = args[1];
+        Npc npc = npcManager.getNpc(name);
+        if (npc == null) {
+            sender.sendMessage(msg.getWithPrefix("npc-not-found", "npc", name));
+            return true;
+        }
+        
+        String effectName = args[2].toUpperCase();
+        NpcEffect effect = NpcEffect.getByName(effectName);
+        if (effect == null) {
+            sender.sendMessage(msg.getWithPrefix("effect.invalid", 
+                "effects", Arrays.stream(NpcEffect.values())
+                    .map(NpcEffect::getName)
+                    .collect(Collectors.joining(", "))));
+            return true;
+        }
+        
+        boolean enabled = Boolean.parseBoolean(args[3]);
+        
+        if (enabled) {
+            npc.getData().addEffect(effect);
+        } else {
+            npc.getData().removeEffect(effect);
+        }
+        
+        npc.removeForAll();
+        npc.spawnForAll();
+        npcManager.saveNpcs();
+        
+        String messageKey = enabled ? "effect.enabled" : "effect.disabled";
+        sender.sendMessage(msg.getWithPrefix(messageKey, "name", name, "effect", effect.getName()));
         return true;
     }
 
@@ -993,6 +1083,12 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         if (sender.hasPermission("woonpc.pose")) {
             sender.sendMessage(msg.get("help.pose", "command", label));
         }
+        if (sender.hasPermission("woonpc.scale")) {
+            sender.sendMessage(msg.get("help.scale", "command", label));
+        }
+        if (sender.hasPermission("woonpc.effect")) {
+            sender.sendMessage(msg.get("help.effect", "command", label));
+        }
         if (sender.hasPermission("woonpc.action")) {
             sender.sendMessage(msg.get("help.action", "command", label));
         }
@@ -1109,6 +1205,24 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                                 completions.add(pose.getConfigName());
                             }
                         }
+                    }
+                    break;
+                    
+                case "scale":
+                    if (args.length == 3) {
+                        completions.addAll(Arrays.asList("0.5", "1.0", "1.5", "2.0", "3.0"));
+                    }
+                    break;
+                    
+                case "effect":
+                    if (args.length == 3) {
+                        for (NpcEffect effect : NpcEffect.values()) {
+                            if (effect.getName().toLowerCase().startsWith(prefix)) {
+                                completions.add(effect.getName());
+                            }
+                        }
+                    } else if (args.length == 4) {
+                        completions.addAll(Arrays.asList("true", "false"));
                     }
                     break;
 

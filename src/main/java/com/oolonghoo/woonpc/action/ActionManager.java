@@ -154,25 +154,45 @@ public class ActionManager {
             org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing " + directActions.size() + " actions for NPC " + npcId);
         }
         
-        // 如果是左键或右键，也要获取 ANY_CLICK 的动作
         List<NpcAction.NpcActionData> anyClickActions = Collections.emptyList();
         if (trigger == ActionTrigger.LEFT_CLICK || trigger == ActionTrigger.RIGHT_CLICK) {
             anyClickActions = getNpcActions(npcId, ActionTrigger.ANY_CLICK);
         }
         
-        // 合并并排序所有动作
         List<NpcAction.NpcActionData> allActions = new ArrayList<>();
         allActions.addAll(directActions);
         allActions.addAll(anyClickActions);
         allActions.sort(Comparator.comparingInt(NpcAction.NpcActionData::order));
         
-        // 执行动作
-        for (NpcAction.NpcActionData actionData : allActions) {
+        if (allActions.isEmpty()) {
+            return;
+        }
+        
+        ActionExecutionContext context = new ActionExecutionContext(npc, player, trigger, allActions);
+        
+        while (context.getCurrentIndex() < allActions.size() && !context.isTerminated()) {
+            NpcAction.NpcActionData actionData = context.getCurrentAction();
+            if (actionData == null) {
+                break;
+            }
+            
             try {
                 org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing action: " + actionData.action().getName() + " with value: " + actionData.value());
-                actionData.execute(player);
+                actionData.executeWithContext(context);
+                
+                if (context.isSkipRemaining()) {
+                    break;
+                }
+                
+                if (context.getJumpToIndex() >= 0) {
+                    context.setCurrentIndex(context.getJumpToIndex());
+                    context.setJumpToIndex(-1);
+                } else {
+                    context.nextAction();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
+                context.nextAction();
             }
         }
     }
