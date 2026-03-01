@@ -41,9 +41,11 @@ npc:
 skin:
   set: "&a成功设置NPC {name} 的皮肤为 {skin}"
   set-mirror: "&a成功设置NPC {name} 为镜像皮肤模式"
+  cleared: "&a成功清除NPC {name} 的皮肤"
   fetching: "&e正在获取皮肤数据..."
   fetch-error: "&c获取皮肤失败: {error}"
   invalid-skin: "&c无效的皮肤类型！"
+  not-found: "&c无法获取玩家 {skin} 的皮肤数据，请检查玩家名是否正确"
   
 # 发光效果
 glowing:
