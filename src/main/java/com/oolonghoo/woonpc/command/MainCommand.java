@@ -288,9 +288,10 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         String skin = args[2];
         if (skin.equalsIgnoreCase("@mirror")) {
             npc.getData().setSkinMirror(true);
-            sender.sendMessage(msg.getWithPrefix("skin.set-mirror", "name", name));
-            npc.updateForAll();
+            npc.removeForAll();
+            npc.spawnForAll();
             npcManager.saveNpcs();
+            sender.sendMessage(msg.getWithPrefix("skin.set-mirror", "name", name));
         } else {
             sender.sendMessage(msg.get("skin.fetching", "skin", skin));
             npc.getData().setSkinMirror(false);
@@ -303,7 +304,8 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 
                 npc.getData().setSkinName(skin);
                 npc.getData().setSkin(skinData.getTextureValue(), skinData.getTextureSignature());
-                npc.updateForAll();
+                npc.removeForAll();
+                npc.spawnForAll();
                 npcManager.saveNpcs();
                 
                 sender.sendMessage(msg.getWithPrefix("skin.set", "name", name, "skin", skin));

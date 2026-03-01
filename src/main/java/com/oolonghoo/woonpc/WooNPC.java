@@ -349,22 +349,15 @@ public class WooNPC extends JavaPlugin {
      * 重载插件配置
      */
     public void reload() {
-        // 重载配置
         configLoader.load();
-        
-        // 重载消息
         messageManager.load();
         
-        // 保存并移除所有 NPC
-        for (Npc npc : npcs.values()) {
+        for (Npc npc : npcManager.getAllNpcs()) {
             npc.removeForAll();
         }
-        npcs.clear();
         
-        // 重新加载 NPC
         npcManager.loadNpcs();
         
-        // 为所有玩家重新生成 NPC
         for (Npc npc : npcManager.getAllNpcs()) {
             npc.spawnForAll();
         }
