@@ -82,6 +82,10 @@ public class ActionExecutionContext {
         this.skipRemaining = true;
     }
     
+    public void resetSkipRemaining() {
+        this.skipRemaining = false;
+    }
+    
     public int getJumpToIndex() {
         return jumpToIndex;
     }

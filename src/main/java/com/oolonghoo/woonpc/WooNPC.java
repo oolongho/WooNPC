@@ -213,7 +213,8 @@ public class WooNPC extends JavaPlugin {
             return;
         }
         
-        placeholderRefreshTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+        // 使用同步任务，因为 npc.updateForAll() 需要在主线程执行
+        placeholderRefreshTaskId = Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (Npc npc : npcManager.getAllNpcs()) {
                 String displayName = npc.getData().getDisplayName();
                 if (PlaceholderUtil.containsPlaceholders(displayName)) {

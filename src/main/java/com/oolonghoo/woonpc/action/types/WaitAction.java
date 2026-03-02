@@ -49,6 +49,11 @@ public class WaitAction extends NpcAction {
     }
     
     private void continueExecution(ActionExecutionContext context, int startIndex) {
+        // 重置上下文状态，确保延迟后的执行有干净的状态
+        context.resetSkipRemaining();
+        context.setJumpToIndex(-1);
+        context.setCurrentIndex(startIndex);
+        
         java.util.List<NpcAction.NpcActionData> actions = context.getActions();
         
         for (int i = startIndex; i < actions.size(); i++) {
@@ -58,7 +63,7 @@ public class WaitAction extends NpcAction {
             }
             
             try {
-                // 复用原始上下文，只更新当前索引
+                // 更新当前索引
                 context.setCurrentIndex(i);
                 
                 actionData.executeWithContext(context);
