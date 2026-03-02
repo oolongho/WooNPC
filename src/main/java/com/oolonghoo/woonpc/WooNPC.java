@@ -213,6 +213,18 @@ public class WooNPC extends JavaPlugin {
             return;
         }
         
+        // 确保间隔合理，避免过于频繁执行影响主线程性能
+        // 最小 20 ticks (1秒)，最大 6000 ticks (5分钟)
+        final int MIN_INTERVAL = 20;
+        final int MAX_INTERVAL = 6000;
+        if (interval < MIN_INTERVAL) {
+            getLogger().warning("占位符刷新间隔 " + interval + " ticks 过小，已调整为最小值 " + MIN_INTERVAL + " ticks");
+            interval = MIN_INTERVAL;
+        } else if (interval > MAX_INTERVAL) {
+            getLogger().warning("占位符刷新间隔 " + interval + " ticks 过大，已调整为最大值 " + MAX_INTERVAL + " ticks");
+            interval = MAX_INTERVAL;
+        }
+        
         // 使用同步任务，因为 npc.updateForAll() 需要在主线程执行
         placeholderRefreshTaskId = Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (Npc npc : npcManager.getAllNpcs()) {
