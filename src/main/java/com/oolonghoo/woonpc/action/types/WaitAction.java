@@ -39,10 +39,50 @@ public class WaitAction extends NpcAction {
             return;
         }
         
-        Bukkit.getScheduler().runTaskLater(JavaPlugin.getPlugin(WooNPC.class), () -> {
-        }, ticks);
-        
+        // 标记跳过当前循环的剩余动作（等待后再执行）
         context.skipRemaining();
+        
+        // 延迟后继续执行后续动作
+        Bukkit.getScheduler().runTaskLater(JavaPlugin.getPlugin(WooNPC.class), () -> {
+            continueExecution(context, nextIndex);
+        }, ticks);
+    }
+    
+    private void continueExecution(ActionExecutionContext context, int startIndex) {
+        java.util.List<NpcAction.NpcActionData> actions = context.getActions();
+        
+        for (int i = startIndex; i < actions.size(); i++) {
+            NpcAction.NpcActionData actionData = actions.get(i);
+            if (actionData == null) {
+                continue;
+            }
+            
+            try {
+                // 创建新的上下文用于后续执行
+                ActionExecutionContext newContext = new ActionExecutionContext(
+                    context.getNpc(),
+                    context.getPlayer(),
+                    context.getTrigger(),
+                    actions
+                );
+                newContext.setCurrentIndex(i);
+                
+                actionData.executeWithContext(newContext);
+                
+                // 如果后续动作要求跳过剩余动作（如另一个 wait 或 execute_random_action）
+                if (newContext.isSkipRemaining()) {
+                    break;
+                }
+                
+                // 如果后续动作要求跳转到指定索引
+                if (newContext.getJumpToIndex() >= 0) {
+                    i = newContext.getJumpToIndex() - 1; // -1 因为循环会 +1
+                    newContext.setJumpToIndex(-1);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     @Override

@@ -1261,6 +1261,32 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 case "copy":
                     // 第二个参数是新NPC名称，不需要补全
                     break;
+                    
+                case "moveto":
+                    // moveto <名称> <x> <y> <z> [yaw] [pitch]
+                    Npc movetoNpc = npcManager.getNpc(args[1]);
+                    if (movetoNpc != null) {
+                        Location npcLoc = movetoNpc.getLocation();
+                        if (npcLoc != null) {
+                            if (args.length == 3) {
+                                // X 坐标补全
+                                completions.add(String.valueOf(Math.round(npcLoc.getX() * 100.0) / 100.0));
+                            } else if (args.length == 4) {
+                                // Y 坐标补全
+                                completions.add(String.valueOf(Math.round(npcLoc.getY() * 100.0) / 100.0));
+                            } else if (args.length == 5) {
+                                // Z 坐标补全
+                                completions.add(String.valueOf(Math.round(npcLoc.getZ() * 100.0) / 100.0));
+                            } else if (args.length == 6) {
+                                // yaw 补全
+                                completions.add(String.valueOf(Math.round(npcLoc.getYaw())));
+                            } else if (args.length == 7) {
+                                // pitch 补全
+                                completions.add(String.valueOf(Math.round(npcLoc.getPitch())));
+                            }
+                        }
+                    }
+                    break;
             }
         }
 

@@ -289,13 +289,25 @@ public class NpcImpl extends Npc {
     
     private void applySkin(ServerPlayer npcPlayer, String value, String signature) {
         try {
-            PropertyMap propertyMap = new PropertyMap(
-                    ImmutableMultimap.of(
-                            "textures",
-                            new Property("textures", value, signature)
-                    )
-            );
-            npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
+            if (value == null || value.isEmpty()) {
+                // 清除皮肤：创建空的 PropertyMap
+                PropertyMap propertyMap = createEmptyPropertyMap();
+                if (propertyMap != null) {
+                    npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
+                } else {
+                    // 如果无法创建空的 PropertyMap，使用基本的 GameProfile
+                    npcPlayer.gameProfile = new GameProfile(uuid, localName);
+                }
+            } else {
+                // 设置皮肤
+                PropertyMap propertyMap = new PropertyMap(
+                        ImmutableMultimap.of(
+                                "textures",
+                                new Property("textures", value, signature)
+                        )
+                );
+                npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
+            }
         } catch (Exception e) {
             Bukkit.getLogger().warning("[WooNPC] 设置皮肤失败: " + e.getMessage());
         }

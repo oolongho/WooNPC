@@ -88,8 +88,29 @@ public class HologramHook {
             wooCreateHologramMethod = wooHologramsApiClass.getMethod("createHologram", String.class, Location.class);
             wooGetHologramMethod = wooHologramsApiClass.getMethod("getHologram", String.class);
             wooDeleteHologramMethod = wooHologramsApiClass.getMethod("deleteHologram", String.class);
-            wooSetLineMethod = hologramClass.getMethod("setLine", int.class, String.class);
-            wooClearLinesMethod = hologramClass.getMethod("clearLines");
+            
+            // 尝试获取 setLine 方法，支持多种签名
+            try {
+                // 尝试标准签名
+                wooSetLineMethod = hologramClass.getMethod("setLine", int.class, String.class);
+            } catch (NoSuchMethodException e) {
+                // 尝试其他可能的签名
+                try {
+                    // 可能的替代方法
+                    wooSetLineMethod = hologramClass.getMethod("addLine", String.class);
+                } catch (NoSuchMethodException e2) {
+                    // 尝试另一种可能
+                    wooSetLineMethod = hologramClass.getMethod("setLines", java.util.List.class);
+                }
+            }
+            
+            // 尝试获取 clearLines 方法
+            try {
+                wooClearLinesMethod = hologramClass.getMethod("clearLines");
+            } catch (NoSuchMethodException e) {
+                // 忽略，使用其他方式处理
+            }
+            
             wooTeleportMethod = hologramClass.getMethod("teleport", Location.class);
             
             return true;
@@ -185,8 +206,21 @@ public class HologramHook {
                     Method getMethod = hologramOpt.getClass().getMethod("get");
                     Object hologram = getMethod.invoke(hologramOpt);
                     
-                    for (int i = 0; i < lines.size(); i++) {
-                        wooSetLineMethod.invoke(hologram, i, lines.get(i));
+                    // 根据方法签名调用不同的方法
+                    Class<?>[] paramTypes = wooSetLineMethod.getParameterTypes();
+                    if (paramTypes.length == 2 && paramTypes[0] == int.class && paramTypes[1] == String.class) {
+                        // setLine(int, String)
+                        for (int i = 0; i < lines.size(); i++) {
+                            wooSetLineMethod.invoke(hologram, i, lines.get(i));
+                        }
+                    } else if (paramTypes.length == 1 && paramTypes[0] == String.class) {
+                        // addLine(String)
+                        for (String line : lines) {
+                            wooSetLineMethod.invoke(hologram, line);
+                        }
+                    } else if (paramTypes.length == 1 && paramTypes[0] == java.util.List.class) {
+                        // setLines(List)
+                        wooSetLineMethod.invoke(hologram, lines);
                     }
                     
                     npcHologramMap.put(npcId, hologramId);
@@ -245,9 +279,30 @@ public class HologramHook {
                     Method getMethod = hologramOpt.getClass().getMethod("get");
                     Object hologram = getMethod.invoke(hologramOpt);
                     
-                    wooClearLinesMethod.invoke(hologram);
-                    for (int i = 0; i < lines.size(); i++) {
-                        wooSetLineMethod.invoke(hologram, i, lines.get(i));
+                    // 尝试清除现有行
+                    if (wooClearLinesMethod != null) {
+                        try {
+                            wooClearLinesMethod.invoke(hologram);
+                        } catch (Exception e) {
+                            // 忽略，使用其他方式处理
+                        }
+                    }
+                    
+                    // 根据方法签名调用不同的方法
+                    Class<?>[] paramTypes = wooSetLineMethod.getParameterTypes();
+                    if (paramTypes.length == 2 && paramTypes[0] == int.class && paramTypes[1] == String.class) {
+                        // setLine(int, String)
+                        for (int i = 0; i < lines.size(); i++) {
+                            wooSetLineMethod.invoke(hologram, i, lines.get(i));
+                        }
+                    } else if (paramTypes.length == 1 && paramTypes[0] == String.class) {
+                        // addLine(String)
+                        for (String line : lines) {
+                            wooSetLineMethod.invoke(hologram, line);
+                        }
+                    } else if (paramTypes.length == 1 && paramTypes[0] == java.util.List.class) {
+                        // setLines(List)
+                        wooSetLineMethod.invoke(hologram, lines);
                     }
                 }
             }
