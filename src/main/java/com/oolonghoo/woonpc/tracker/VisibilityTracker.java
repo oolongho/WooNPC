@@ -227,37 +227,41 @@ public class VisibilityTracker implements Runnable {
         NpcData data = npc.getData();
         Location npcLocation = data.getLocation();
         
-        // 检查位置是否有效
         if (npcLocation == null || npcLocation.getWorld() == null) {
             return false;
         }
         
-        // 检查玩家位置是否有效
         if (playerLocation.getWorld() == null) {
             return false;
         }
         
-        // 检查是否在同一世界（使用引用比较，因为已经按世界分组）
         if (npcLocation.getWorld() != playerLocation.getWorld()) {
             return false;
         }
         
-        // 获取可见距离
         int visibilityDistance = data.getVisibilityDistance();
         double effectiveDistanceSquared;
         
         if (visibilityDistance > 0) {
-            // 使用 NPC 特定的可见距离
             effectiveDistanceSquared = (double) visibilityDistance * visibilityDistance;
         } else {
-            // 使用默认可见距离
             effectiveDistanceSquared = defaultVisibilityDistanceSquared;
         }
         
-        // 计算距离平方
         double distanceSquared = npcLocation.distanceSquared(playerLocation);
         
-        return distanceSquared <= effectiveDistanceSquared;
+        if (distanceSquared > effectiveDistanceSquared) {
+            return false;
+        }
+        
+        int chunkX = ((int) npcLocation.getX()) >> 4;
+        int chunkZ = ((int) npcLocation.getZ()) >> 4;
+        
+        if (!npcLocation.getWorld().isChunkLoaded(chunkX, chunkZ)) {
+            return false;
+        }
+        
+        return true;
     }
     
     /**

@@ -523,7 +523,7 @@ public class NpcData {
             for (int i = 0; i < entry.getValue().size(); i++) {
                 NpcAction.NpcActionData actionData = entry.getValue().get(i);
                 String path = "actions." + triggerName + "." + i;
-                section.set(path + ".type", actionData.action().getName());
+                section.set(path + ".type", actionData.action() != null ? actionData.action().getName() : "");
                 section.set(path + ".value", actionData.value() != null ? actionData.value() : "");
                 section.set(path + ".order", actionData.order());
             }

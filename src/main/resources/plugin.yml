@@ -35,7 +35,7 @@ permissions:
       woonpc.pose: true
       woonpc.scale: true
       woonpc.effect: true
-      woonpc.edit: true
+      woonpc.reload: true
       woonpc.reload: true
   
   woonpc.use:
@@ -53,7 +53,7 @@ permissions:
   woonpc.skin:
     description: 设置皮肤权限
     default: op
-  
+
   woonpc.glowing:
     description: 设置发光效果权限
     default: op

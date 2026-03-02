@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.List;
 
 /**
  * NPC 抽象基类
@@ -30,9 +32,28 @@ public abstract class Npc {
     protected final Map<UUID, Boolean> isLookingAtPlayer = new ConcurrentHashMap<>();
     protected final Map<UUID, Long> lastPlayerInteraction = new ConcurrentHashMap<>();
     
+    // 可见性变化监听器
+    private final List<VisibilityChangeListener> visibilityChangeListeners = new CopyOnWriteArrayList<>();
+    
     // NPC 数据
     protected NpcData data;
     protected boolean saveToFile;
+    
+    /**
+     * 可见性变化监听器接口
+     */
+    @FunctionalInterface
+    public interface VisibilityChangeListener {
+        /**
+         * 当 NPC 对玩家的可见性发生变化时调用
+         * 
+         * @param npc NPC 对象
+         * @param player 玩家
+         * @param visible 是否可见
+         * @param visiblePlayerCount 当前可见玩家数量
+         */
+        void onVisibilityChange(Npc npc, Player player, boolean visible, int visiblePlayerCount);
+    }
     
     /**
      * 构造函数
@@ -376,6 +397,70 @@ public abstract class Npc {
      */
     public void setLocation(Location location) {
         data.setLocation(location);
+    }
+    
+    /**
+     * 添加可见性变化监听器
+     * 
+     * @param listener 监听器
+     */
+    public void addVisibilityChangeListener(VisibilityChangeListener listener) {
+        visibilityChangeListeners.add(listener);
+    }
+    
+    /**
+     * 移除可见性变化监听器
+     * 
+     * @param listener 监听器
+     */
+    public void removeVisibilityChangeListener(VisibilityChangeListener listener) {
+        visibilityChangeListeners.remove(listener);
+    }
+    
+    /**
+     * 获取当前可见玩家数量
+     * 
+     * @return 可见玩家数量
+     */
+    public int getVisiblePlayerCount() {
+        int count = 0;
+        for (Boolean visible : isVisibleForPlayer.values()) {
+            if (visible) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * 检查是否有可见玩家
+     * 
+     * @return 是否有可见玩家
+     */
+    public boolean hasVisiblePlayers() {
+        for (Boolean visible : isVisibleForPlayer.values()) {
+            if (visible) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * 触发可见性变化事件
+     * 
+     * @param player 玩家
+     * @param visible 是否可见
+     */
+    protected void fireVisibilityChangeEvent(Player player, boolean visible) {
+        int visibleCount = getVisiblePlayerCount();
+        for (VisibilityChangeListener listener : visibilityChangeListeners) {
+            try {
+                listener.onVisibilityChange(this, player, visible, visibleCount);
+            } catch (Exception e) {
+                Bukkit.getLogger().warning("[WooNPC] 可见性监听器执行异常: " + e.getMessage());
+            }
+        }
     }
     
     /**

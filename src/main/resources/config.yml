@@ -79,3 +79,21 @@ performance:
   
   # 最大NPC数量 (0=无限制)
   max-npcs-per-world: 0
+  
+  # 占位符刷新间隔 (tick)
+  placeholder-refresh-interval: 100
+
+# 缓存设置
+cache:
+  skin:
+    # 皮肤缓存过期时间 (小时)
+    expiry-hours: 24
+    # 是否启用文件缓存
+    file-cache-enabled: true
+
+# 可见性设置
+visibility:
+  # 是否检查区块加载状态
+  check-chunk-loaded: true
+  # 是否缓存区块可见性状态
+  cache-enabled: true

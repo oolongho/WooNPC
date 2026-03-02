@@ -39,12 +39,15 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.entity.Player;
 
+import com.oolonghoo.woonpc.util.PlaceholderUtil;
 import com.oolonghoo.woonpc.util.VersionUtil;
+import com.oolonghoo.woonpc.WooNPC;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class NpcImpl extends Npc {
     
@@ -52,6 +55,13 @@ public class NpcImpl extends Npc {
     private final String localName;
     private final UUID uuid;
     private Display.TextDisplay sittingVehicle;
+    
+    // 区块可见性缓存 (Player UUID -> Chunk Key -> Boolean)
+    private final Map<UUID, Map<Long, Boolean>> chunkVisibilityCache = new ConcurrentHashMap<>();
+    
+    // 缓存失效计数器
+    private int cacheInvalidationCounter = 0;
+    private static final int CACHE_INVALIDATION_INTERVAL = 100; // 每 100 次检查清理一次缓存
     
     private static Method gameProfileNameMethod;
     private static Method gameProfileIdMethod;
@@ -249,6 +259,28 @@ public class NpcImpl extends Npc {
         super(data);
         this.localName = generateLocalName();
         this.uuid = UUID.randomUUID();
+        
+        // 注册可见性变化监听器，用于维护 tickable 索引
+        addVisibilityChangeListener(this::onVisibilityChange);
+    }
+    
+    /**
+     * 可见性变化回调
+     * 当有玩家变为可见时添加到 tickable 索引，当无可见玩家时从索引移除
+     */
+    private void onVisibilityChange(Npc npc, Player player, boolean visible, int visiblePlayerCount) {
+        WooNPC plugin = WooNPC.getInstance();
+        if (plugin == null) return;
+        
+        UUID npcId = UUID.fromString(data.getId());
+        
+        if (visible) {
+            // 有玩家变为可见，添加到 tickable 索引
+            plugin.getNpcManager().addToTickableIndex(npcId);
+        } else if (visiblePlayerCount == 0) {
+            // 无可见玩家，从 tickable 索引移除
+            plugin.getNpcManager().removeFromTickableIndex(npcId);
+        }
     }
     
     @Override
@@ -330,8 +362,17 @@ public class NpcImpl extends Npc {
             return;
         }
         
-        if (data.getSkinValue() != null && !data.getSkinValue().isEmpty() && npc instanceof ServerPlayer npcPlayer) {
-            applySkin(npcPlayer, data.getSkinValue(), data.getSkinSignature());
+        if (npc instanceof ServerPlayer npcPlayer) {
+            if (data.isSkinMirror()) {
+                PropertyMap viewerProperties = getProfileProperties(serverPlayer.getGameProfile());
+                String profileName = getProfileName(npcPlayer.getGameProfile());
+                UUID profileId = getProfileId(npcPlayer.getGameProfile());
+                GameProfile mirroredProfile = createGameProfileWithProperties(
+                        profileId != null ? profileId : uuid, profileName, viewerProperties);
+                npcPlayer.gameProfile = mirroredProfile;
+            } else if (data.getSkinValue() != null && !data.getSkinValue().isEmpty()) {
+                applySkin(npcPlayer, data.getSkinValue(), data.getSkinSignature());
+            }
         }
         
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
@@ -386,6 +427,9 @@ public class NpcImpl extends Npc {
         runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
         
         update(player);
+        
+        // 触发可见性变化事件（玩家变为可见）
+        fireVisibilityChangeEvent(player, true);
     }
     
     @Override
@@ -414,7 +458,13 @@ public class NpcImpl extends Npc {
                     () -> serverPlayer.connection.send(removeSittingVehiclePacket));
         }
         
+        boolean wasVisible = isVisibleForPlayer.getOrDefault(serverPlayer.getUUID(), false);
         isVisibleForPlayer.put(serverPlayer.getUUID(), false);
+        
+        // 触发可见性变化事件（玩家变为不可见）
+        if (wasVisible) {
+            fireVisibilityChangeEvent(serverPlayer.getBukkitEntity(), false);
+        }
     }
     
     @Override
@@ -465,8 +515,7 @@ public class NpcImpl extends Npc {
         
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
         
-        // 解析颜色代码
-        String displayNameStr = data.getDisplayName();
+        String displayNameStr = PlaceholderUtil.setPlaceholder(player, data.getDisplayName());
         net.kyori.adventure.text.Component displayName;
         if (displayNameStr.contains("&") || displayNameStr.contains("§")) {
             displayName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
@@ -926,6 +975,168 @@ public class NpcImpl extends Npc {
         } catch (ClassNotFoundException e) {
             task.run();
         }
+    }
+    
+    @Override
+    protected boolean shouldBeVisible(Player player) {
+        if (data.getLocation() == null) {
+            return false;
+        }
+        
+        if (player.getLocation().getWorld() != data.getLocation().getWorld()) {
+            return false;
+        }
+        
+        int visibilityDistance = data.getVisibilityDistance();
+        if (visibilityDistance > 0) {
+            double distanceSquared = data.getLocation().distanceSquared(player.getLocation());
+            if (distanceSquared > visibilityDistance * visibilityDistance) {
+                return false;
+            }
+        }
+        
+        int chunkX = ((int) data.getLocation().getX()) >> 4;
+        int chunkZ = ((int) data.getLocation().getZ()) >> 4;
+        
+        if (!isChunkVisible(player, chunkX, chunkZ)) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    protected boolean isChunkVisible(Player player, int chunkX, int chunkZ) {
+        if (player == null || data.getLocation() == null || data.getLocation().getWorld() == null) {
+            return false;
+        }
+        
+        org.bukkit.World world = data.getLocation().getWorld();
+        
+        if (!world.isChunkLoaded(chunkX, chunkZ)) {
+            return false;
+        }
+        
+        try {
+            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+            return isChunkSentToClient(serverPlayer, chunkX, chunkZ);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+    
+    private boolean isChunkSentToClient(ServerPlayer serverPlayer, int chunkX, int chunkZ) {
+        try {
+            long chunkKey = chunkX & 0xFFFFFFFFL | ((long) chunkZ & 0xFFFFFFFFL) << 32;
+            
+            UUID playerId = serverPlayer.getUUID();
+            Map<Long, Boolean> playerCache = chunkVisibilityCache.get(playerId);
+            
+            if (playerCache != null) {
+                Boolean cached = playerCache.get(chunkKey);
+                if (cached != null) {
+                    return cached;
+                }
+            }
+            
+            boolean isVisible = checkChunkSentNMS(serverPlayer, chunkX, chunkZ);
+            
+            chunkVisibilityCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>())
+                    .put(chunkKey, isVisible);
+            
+            cacheInvalidationCounter++;
+            if (cacheInvalidationCounter >= CACHE_INVALIDATION_INTERVAL) {
+                cacheInvalidationCounter = 0;
+                invalidateChunkCache(playerId);
+            }
+            
+            return isVisible;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+    
+    private boolean checkChunkSentNMS(ServerPlayer serverPlayer, int chunkX, int chunkZ) {
+        try {
+            net.minecraft.server.level.ServerLevel serverLevel = getServerLevel(serverPlayer);
+            if (serverLevel == null) {
+                return true;
+            }
+            
+            java.lang.reflect.Method getChunkProviderMethod = net.minecraft.server.level.ServerLevel.class.getMethod("getChunkProvider");
+            Object chunkProvider = getChunkProviderMethod.invoke(serverLevel);
+            
+            if (chunkProvider == null) {
+                return true;
+            }
+            
+            Class<?> chunkProviderClass = chunkProvider.getClass();
+            java.lang.reflect.Field chunkMapField = null;
+            
+            try {
+                chunkMapField = chunkProviderClass.getDeclaredField("chunkMap");
+            } catch (NoSuchFieldException e) {
+                for (java.lang.reflect.Field field : chunkProviderClass.getDeclaredFields()) {
+                    if (field.getType().getName().contains("ChunkMap")) {
+                        chunkMapField = field;
+                        break;
+                    }
+                }
+            }
+            
+            if (chunkMapField == null) {
+                return true;
+            }
+            
+            chunkMapField.setAccessible(true);
+            Object chunkMap = chunkMapField.get(chunkProvider);
+            
+            if (chunkMap == null) {
+                return true;
+            }
+            
+            Class<?> chunkMapClass = chunkMap.getClass();
+            java.lang.reflect.Method getPlayersMethod = null;
+            
+            try {
+                getPlayersMethod = chunkMapClass.getMethod("getPlayers", int.class, int.class, boolean.class);
+            } catch (NoSuchMethodException e) {
+                for (java.lang.reflect.Method method : chunkMapClass.getMethods()) {
+                    if (method.getName().equals("getPlayers") && method.getParameterCount() == 3) {
+                        getPlayersMethod = method;
+                        break;
+                    }
+                }
+            }
+            
+            if (getPlayersMethod == null) {
+                return true;
+            }
+            
+            Object players = getPlayersMethod.invoke(chunkMap, chunkX, chunkZ, false);
+            
+            if (players instanceof java.util.List<?> playerList) {
+                return playerList.contains(serverPlayer);
+            }
+            
+            return true;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+    
+    private void invalidateChunkCache(UUID playerId) {
+        Map<Long, Boolean> playerCache = chunkVisibilityCache.get(playerId);
+        if (playerCache != null && playerCache.size() > 50) {
+            playerCache.clear();
+        }
+    }
+    
+    public void clearChunkVisibilityCache(UUID playerId) {
+        chunkVisibilityCache.remove(playerId);
+    }
+    
+    public void clearAllChunkVisibilityCache() {
+        chunkVisibilityCache.clear();
     }
 
 }

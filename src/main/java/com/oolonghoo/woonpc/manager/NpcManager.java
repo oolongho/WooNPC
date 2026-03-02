@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * NPC管理器
@@ -32,6 +33,12 @@ public class NpcManager {
     // NPC存储
     private final Map<String, Npc> npcsByName = new ConcurrentHashMap<>();
     private final Map<UUID, Npc> npcsById = new ConcurrentHashMap<>();
+    
+    // Tickable NPC 索引 (有可见玩家的 NPC)
+    private final Set<UUID> tickableNpcs = ConcurrentHashMap.newKeySet();
+    
+    // 是否有 tickable NPC 的状态标志
+    private final AtomicBoolean hasTickableNpcs = new AtomicBoolean(false);
     
     // 数据文件
     private File dataFile;
@@ -105,38 +112,87 @@ public class NpcManager {
     }
 
     /**
-     * 保存所有NPC到文件
+     * 保存所有NPC到文件 (增量保存)
+     * 只保存有变更的NPC
      */
     public void saveNpcs() {
+        saveNpcs(false);
+    }
+    
+    /**
+     * 保存NPC到文件
+     * 
+     * @param force true=强制保存所有NPC; false=只保存脏标记为true的NPC
+     * @return 实际保存的NPC数量
+     */
+    public int saveNpcs(boolean force) {
         if (dataConfig == null) {
-            return;
+            return 0;
         }
         
-        // 清空旧数据
-        dataConfig.set("npcs", null);
+        int savedCount = 0;
         
-        // 保存每个NPC
-        for (Map.Entry<String, Npc> entry : npcsByName.entrySet()) {
-            String name = entry.getKey();
-            Npc npc = entry.getValue();
-            ConfigurationSection npcSection = dataConfig.createSection("npcs." + name);
-            npc.getData().saveToConfig(npcSection);
+        if (force) {
+            // 强制保存：清空旧数据，保存所有NPC
+            dataConfig.set("npcs", null);
+            
+            for (Map.Entry<String, Npc> entry : npcsByName.entrySet()) {
+                String name = entry.getKey();
+                Npc npc = entry.getValue();
+                ConfigurationSection npcSection = dataConfig.createSection("npcs." + name);
+                npc.getData().saveToConfig(npcSection);
+                npc.getData().setDirty(false);
+                savedCount++;
+            }
+        } else {
+            // 增量保存：只保存有变更的NPC
+            boolean hasChanges = false;
+            
+            for (Map.Entry<String, Npc> entry : npcsByName.entrySet()) {
+                Npc npc = entry.getValue();
+                if (npc.getData().isDirty()) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+            
+            if (!hasChanges) {
+                debug.debug("没有需要保存的NPC变更");
+                return 0;
+            }
+            
+            // 需要保存时，重建整个配置
+            dataConfig.set("npcs", null);
+            
+            for (Map.Entry<String, Npc> entry : npcsByName.entrySet()) {
+                String name = entry.getKey();
+                Npc npc = entry.getValue();
+                ConfigurationSection npcSection = dataConfig.createSection("npcs." + name);
+                npc.getData().saveToConfig(npcSection);
+                
+                if (npc.getData().isDirty()) {
+                    npc.getData().setDirty(false);
+                    savedCount++;
+                }
+            }
         }
         
         // 写入文件
         try {
             dataConfig.save(dataFile);
-            debug.debug("保存了 " + npcsByName.size() + " 个NPC");
+            debug.debug("保存了 " + savedCount + " 个NPC (force=" + force + ")");
         } catch (IOException e) {
             plugin.getLogger().severe("保存NPC数据失败: " + e.getMessage());
         }
+        
+        return savedCount;
     }
     
     /**
-     * 保存所有NPC到文件 (别名方法)
+     * 保存所有NPC到文件 (强制保存)
      */
     public void saveAllNpcs() {
-        saveNpcs();
+        saveNpcs(true);
     }
 
     /**
@@ -193,7 +249,11 @@ public class NpcManager {
             return false;
         }
         
-        npcsById.remove(UUID.fromString(npc.getData().getId()));
+        UUID npcUuid = UUID.fromString(npc.getData().getId());
+        npcsById.remove(npcUuid);
+        
+        // 从 tickable 索引移除
+        removeFromTickableIndex(npcUuid);
         
         // 从世界缓存移除
         plugin.getVisibilityTracker().removeNpcFromWorldCache(npc);
@@ -275,6 +335,61 @@ public class NpcManager {
      */
     public int getNpcCount() {
         return npcsByName.size();
+    }
+    
+    /**
+     * 将 NPC 添加到 tickable 索引
+     * 当 NPC 有玩家变为可见时调用
+     * 
+     * @param npcId NPC 的 UUID
+     */
+    public void addToTickableIndex(UUID npcId) {
+        if (tickableNpcs.add(npcId)) {
+            hasTickableNpcs.set(true);
+            debug.debug("NPC " + npcId + " 添加到 tickable 索引");
+        }
+    }
+    
+    /**
+     * 从 tickable 索引移除 NPC
+     * 当 NPC 没有可见玩家时调用
+     * 
+     * @param npcId NPC 的 UUID
+     */
+    public void removeFromTickableIndex(UUID npcId) {
+        if (tickableNpcs.remove(npcId)) {
+            if (tickableNpcs.isEmpty()) {
+                hasTickableNpcs.set(false);
+            }
+            debug.debug("NPC " + npcId + " 从 tickable 索引移除");
+        }
+    }
+    
+    /**
+     * 检查是否有 tickable NPC
+     * 
+     * @return 是否有需要 tick 的 NPC
+     */
+    public boolean hasTickableNpcs() {
+        return hasTickableNpcs.get();
+    }
+    
+    /**
+     * 获取 tickable NPC 数量
+     * 
+     * @return tickable NPC 数量
+     */
+    public int getTickableNpcCount() {
+        return tickableNpcs.size();
+    }
+    
+    /**
+     * 获取 tickable NPC ID 集合
+     * 
+     * @return tickable NPC ID 集合（只读）
+     */
+    public Set<UUID> getTickableNpcIds() {
+        return Collections.unmodifiableSet(tickableNpcs);
     }
     
     private void loadActionsFromConfig(NpcData data, ConfigurationSection npcSection) {

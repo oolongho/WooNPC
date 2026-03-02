@@ -44,6 +44,13 @@ public class ConfigLoader {
     private int visibilityCheckInterval;
     private int lookUpdateInterval;
     private int maxNpcsPerWorld;
+    private int placeholderRefreshInterval;
+
+    private int skinCacheExpiryHours;
+    private boolean skinFileCacheEnabled;
+
+    private boolean visibilityCheckChunkLoaded;
+    private boolean visibilityCacheEnabled;
 
     public ConfigLoader(WooNPC plugin) {
         this.plugin = plugin;
@@ -85,6 +92,13 @@ public class ConfigLoader {
         this.visibilityCheckInterval = config.getInt("performance.visibility-check-interval", 20);
         this.lookUpdateInterval = config.getInt("performance.look-update-interval", 2);
         this.maxNpcsPerWorld = config.getInt("performance.max-npcs-per-world", 0);
+        this.placeholderRefreshInterval = config.getInt("performance.placeholder-refresh-interval", 100);
+
+        this.skinCacheExpiryHours = config.getInt("cache.skin.expiry-hours", 24);
+        this.skinFileCacheEnabled = config.getBoolean("cache.skin.file-cache-enabled", true);
+
+        this.visibilityCheckChunkLoaded = config.getBoolean("visibility.check-chunk-loaded", true);
+        this.visibilityCacheEnabled = config.getBoolean("visibility.cache-enabled", true);
     }
 
     public boolean isDebug() { return debug; }
@@ -110,4 +124,9 @@ public class ConfigLoader {
     public int getVisibilityCheckInterval() { return visibilityCheckInterval; }
     public int getLookUpdateInterval() { return lookUpdateInterval; }
     public int getMaxNpcsPerWorld() { return maxNpcsPerWorld; }
+    public int getPlaceholderRefreshInterval() { return placeholderRefreshInterval; }
+    public int getSkinCacheExpiryHours() { return skinCacheExpiryHours; }
+    public boolean isSkinFileCacheEnabled() { return skinFileCacheEnabled; }
+    public boolean isVisibilityCheckChunkLoaded() { return visibilityCheckChunkLoaded; }
+    public boolean isVisibilityCacheEnabled() { return visibilityCacheEnabled; }
 }

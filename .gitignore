@@ -27,3 +27,6 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+参考项目/
+*.md

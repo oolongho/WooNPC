@@ -2,11 +2,15 @@ package com.oolonghoo.woonpc.skin;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.oolonghoo.woonpc.skin.cache.SkinCacheData;
+import com.oolonghoo.woonpc.skin.cache.SkinCacheFile;
+import com.oolonghoo.woonpc.skin.cache.SkinCacheMemory;
 import com.oolonghoo.woonpc.skin.dto.AshconResponse;
 import com.oolonghoo.woonpc.skin.dto.MineToolsProfileResponse;
 import com.oolonghoo.woonpc.skin.dto.MineToolsUuidResponse;
 import com.oolonghoo.woonpc.skin.dto.MojangSessionResponse;
 import com.oolonghoo.woonpc.skin.dto.MojangUuidResponse;
+import com.oolonghoo.woonpc.util.PlaceholderUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -50,7 +54,8 @@ public class SkinManager {
     private final Gson gson = new Gson();
     private final HttpClient httpClient;
     private final ExecutorService executor;
-    private final Map<String, SkinData> skinCache = new ConcurrentHashMap<>();
+    private final SkinCacheMemory memCache;
+    private final SkinCacheFile fileCache;
     private final Map<String, UUID> uuidCache = new ConcurrentHashMap<>();
     private final JavaPlugin plugin;
     
@@ -90,6 +95,8 @@ public class SkinManager {
     
     public SkinManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.memCache = new SkinCacheMemory();
+        this.fileCache = new SkinCacheFile(plugin);
         this.executor = Executors.newFixedThreadPool(
                 3,
                 r -> {
@@ -152,7 +159,7 @@ public class SkinManager {
             return null;
         }
         
-        identifier = identifier.trim();
+        identifier = PlaceholderUtil.setPlaceholder(null, identifier.trim());
         
         SkinData cached = getCachedSkin(identifier);
         if (cached != null && !cached.isExpired()) {
@@ -171,7 +178,13 @@ public class SkinManager {
     }
     
     public CompletableFuture<SkinData> getSkinAsync(String identifier, SkinData.SkinVariant variant) {
-        return CompletableFuture.supplyAsync(() -> getSkin(identifier, variant), executor);
+        final String finalIdentifier;
+        if (identifier != null && !identifier.isBlank()) {
+            finalIdentifier = PlaceholderUtil.setPlaceholder(null, identifier.trim());
+        } else {
+            finalIdentifier = identifier;
+        }
+        return CompletableFuture.supplyAsync(() -> getSkin(finalIdentifier, variant), executor);
     }
     
     public CompletableFuture<SkinData> getSkinByName(String name, SkinData.SkinVariant variant) {
@@ -179,7 +192,7 @@ public class SkinManager {
             return CompletableFuture.completedFuture(null);
         }
         
-        final String playerName = name.trim();
+        final String playerName = PlaceholderUtil.setPlaceholder(null, name.trim());
         
         SkinData cached = getCachedSkin(playerName);
         if (cached != null && !cached.isExpired()) {
@@ -475,7 +488,8 @@ public class SkinManager {
         if (identifier == null || skinData == null) {
             return;
         }
-        skinCache.put(identifier.toLowerCase(), skinData);
+        memCache.addSkin(identifier.toLowerCase(), skinData);
+        fileCache.addSkin(identifier.toLowerCase(), skinData);
     }
     
     public SkinData getCachedSkin(String identifier) {
@@ -483,30 +497,47 @@ public class SkinManager {
             return null;
         }
         
-        SkinData skinData = skinCache.get(identifier.toLowerCase());
-        if (skinData == null) {
-            return null;
+        String key = identifier.toLowerCase();
+        
+        SkinData memSkin = memCache.getSkin(key);
+        if (memSkin != null) {
+            return memSkin;
         }
         
-        if (skinData.isExpired()) {
-            skinCache.remove(identifier.toLowerCase());
-            return null;
+        SkinCacheData fileCacheData = fileCache.getCacheData(key);
+        if (fileCacheData != null && !fileCacheData.isExpired()) {
+            memCache.addSkin(key, fileCacheData.getSkinData());
+            return fileCacheData.getSkinData();
         }
         
-        return skinData;
+        return null;
     }
     
     public void clearCache() {
-        skinCache.clear();
+        memCache.clear();
+        fileCache.clear();
         uuidCache.clear();
     }
     
     public void cleanExpiredCache() {
-        skinCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        memCache.cleanExpired();
+        fileCache.cleanExpired();
     }
     
     public int getCacheSize() {
-        return skinCache.size();
+        return memCache.size();
+    }
+    
+    public int getFileCacheSize() {
+        return fileCache.size();
+    }
+    
+    public SkinCacheMemory getMemCache() {
+        return memCache;
+    }
+    
+    public SkinCacheFile getFileCache() {
+        return fileCache;
     }
     
     // ==================== JSON 解析 ====================

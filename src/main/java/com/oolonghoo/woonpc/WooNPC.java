@@ -24,6 +24,7 @@ import com.oolonghoo.woonpc.skin.SkinManager;
 import com.oolonghoo.woonpc.tracker.LookTracker;
 import com.oolonghoo.woonpc.tracker.VisibilityTracker;
 import com.oolonghoo.woonpc.util.DebugManager;
+import com.oolonghoo.woonpc.util.PlaceholderUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -62,6 +63,9 @@ public class WooNPC extends JavaPlugin {
     
     // 全息图 Hook
     private HologramHook hologramHook;
+    
+    // 占位符刷新任务 ID
+    private int placeholderRefreshTaskId = -1;
     
     // NPC 存储 (临时保留用于兼容)
     private final Map<String, Npc> npcs = new ConcurrentHashMap<>();
@@ -184,22 +188,47 @@ public class WooNPC extends JavaPlugin {
     }
     
     private void startTrackers() {
-        // 启动可见性追踪器
         visibilityTracker.start();
-        
-        // 启动头部旋转追踪器
         lookTracker.start();
+        startPlaceholderRefreshTask();
     }
     
     private void stopTrackers() {
-        // 停止可见性追踪器
         if (visibilityTracker != null) {
             visibilityTracker.stop();
         }
-        
-        // 停止头部旋转追踪器
         if (lookTracker != null) {
             lookTracker.stop();
+        }
+        stopPlaceholderRefreshTask();
+    }
+    
+    private void startPlaceholderRefreshTask() {
+        if (!PlaceholderUtil.isPlaceholderApiEnabled()) {
+            return;
+        }
+        
+        int interval = configLoader.getPlaceholderRefreshInterval();
+        if (interval <= 0) {
+            return;
+        }
+        
+        placeholderRefreshTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+            for (Npc npc : npcManager.getAllNpcs()) {
+                String displayName = npc.getData().getDisplayName();
+                if (PlaceholderUtil.containsPlaceholders(displayName)) {
+                    npc.updateForAll();
+                }
+            }
+        }, interval, interval).getTaskId();
+        
+        getLogger().info("已启动占位符刷新任务，间隔: " + interval + " ticks");
+    }
+    
+    private void stopPlaceholderRefreshTask() {
+        if (placeholderRefreshTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(placeholderRefreshTaskId);
+            placeholderRefreshTaskId = -1;
         }
     }
     

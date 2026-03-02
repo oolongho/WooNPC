@@ -1155,7 +1155,6 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                     if (args.length == 3) {
                         completions.add("@mirror");
                         completions.add("@none");
-                        // 添加在线玩家名
                         for (Player online : Bukkit.getOnlinePlayers()) {
                             if (online.getName().toLowerCase().startsWith(prefix)) {
                                 completions.add(online.getName());
@@ -1333,6 +1332,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
         if (sender.hasPermission("woonpc.action")) {
             commands.add("action");
+        }
+        if (sender.hasPermission("woonpc.attr")) {
+            commands.add("attr");
         }
         if (sender.hasPermission("woonpc.reload")) {
             commands.add("reload");

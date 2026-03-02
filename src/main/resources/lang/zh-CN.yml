@@ -46,6 +46,11 @@ skin:
   fetch-error: "&c获取皮肤失败: {error}"
   invalid-skin: "&c无效的皮肤类型！"
   not-found: "&c无法获取玩家 {skin} 的皮肤数据，请检查玩家名是否正确"
+
+# 皮肤镜像
+skin-mirror:
+  enabled: "&a已启用NPC {name} 的皮肤镜像模式，NPC将显示观看者的皮肤"
+  disabled: "&a已禁用NPC {name} 的皮肤镜像模式"
   
 # 发光效果
 glowing:
