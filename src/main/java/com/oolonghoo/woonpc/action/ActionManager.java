@@ -107,9 +107,9 @@ public class ActionManager {
     public List<NpcAction.NpcActionData> getNpcActions(@NotNull String npcId, @NotNull ActionTrigger trigger) {
         // 首先尝试从 NpcData 获取（权威数据源）
         try {
-            com.oolonghoo.woonpc.WooNPC plugin = (com.oolonghoo.woonpc.WooNPC) org.bukkit.Bukkit.getPluginManager().getPlugin("WooNPC");
-            if (plugin != null) {
-                com.oolonghoo.woonpc.npc.Npc npc = plugin.getNpcManager().getNpc(java.util.UUID.fromString(npcId));
+            org.bukkit.plugin.Plugin plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("WooNPC");
+            if (plugin instanceof com.oolonghoo.woonpc.WooNPC wooNPC) {
+                com.oolonghoo.woonpc.npc.Npc npc = wooNPC.getNpcManager().getNpc(java.util.UUID.fromString(npcId));
                 if (npc != null) {
                     List<NpcAction.NpcActionData> actions = npc.getData().getActions(trigger);
                     if (actions != null && !actions.isEmpty()) {

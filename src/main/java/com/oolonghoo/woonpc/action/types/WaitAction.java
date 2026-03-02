@@ -58,26 +58,20 @@ public class WaitAction extends NpcAction {
             }
             
             try {
-                // 创建新的上下文用于后续执行
-                ActionExecutionContext newContext = new ActionExecutionContext(
-                    context.getNpc(),
-                    context.getPlayer(),
-                    context.getTrigger(),
-                    actions
-                );
-                newContext.setCurrentIndex(i);
+                // 复用原始上下文，只更新当前索引
+                context.setCurrentIndex(i);
                 
-                actionData.executeWithContext(newContext);
+                actionData.executeWithContext(context);
                 
                 // 如果后续动作要求跳过剩余动作（如另一个 wait 或 execute_random_action）
-                if (newContext.isSkipRemaining()) {
+                if (context.isSkipRemaining()) {
                     break;
                 }
                 
                 // 如果后续动作要求跳转到指定索引
-                if (newContext.getJumpToIndex() >= 0) {
-                    i = newContext.getJumpToIndex() - 1; // -1 因为循环会 +1
-                    newContext.setJumpToIndex(-1);
+                if (context.getJumpToIndex() >= 0) {
+                    i = context.getJumpToIndex() - 1; // -1 因为循环会 +1
+                    context.setJumpToIndex(-1);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
