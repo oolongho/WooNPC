@@ -12,7 +12,6 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 头部旋转追踪器
@@ -168,21 +167,10 @@ public class LookTracker implements Runnable {
                     updateNpcLookAtPlayer(npc, player, npcData, npcLocation);
                     
                     // 更新看向状态
-                    Boolean wasPreviouslyLooking = npc.getIsLookingAtPlayer().put(player.getUniqueId(), true);
-                    
-                    // 如果之前没有在看，可以触发事件（如果有事件系统）
-                    // if (wasPreviouslyLooking == null || !wasPreviouslyLooking) {
-                    //     // 触发 NpcStartLookingEvent
-                    // }
+                    npc.getIsLookingAtPlayer().put(player.getUniqueId(), true);
                 } else if (npcData.isTurnToPlayer()) {
                     // 超出范围，重置看向状态
-                    Boolean wasLooking = npc.getIsLookingAtPlayer().put(player.getUniqueId(), false);
-                    
-                    // 如果之前在看，可以触发停止看向事件
-                    // if (wasLooking != null && wasLooking) {
-                    //     // 触发 NpcStopLookingEvent
-                    //     // 可选：重置到初始朝向
-                    // }
+                    npc.getIsLookingAtPlayer().put(player.getUniqueId(), false);
                 }
             }
         }

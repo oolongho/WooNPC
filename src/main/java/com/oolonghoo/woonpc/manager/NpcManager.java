@@ -6,7 +6,6 @@ import com.oolonghoo.woonpc.npc.Npc;
 import com.oolonghoo.woonpc.npc.NpcData;
 import com.oolonghoo.woonpc.npc.NpcImpl;
 import com.oolonghoo.woonpc.util.DebugManager;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;

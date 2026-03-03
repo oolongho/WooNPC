@@ -12,7 +12,6 @@ import com.oolonghoo.woonpc.config.ConfigLoader;
 public class DebugManager {
 
     private final WooNPC plugin;
-    private boolean enabled;
 
     public DebugManager(WooNPC plugin) {
         this.plugin = plugin;

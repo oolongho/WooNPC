@@ -23,8 +23,6 @@ import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
@@ -40,7 +38,6 @@ import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.entity.Player;
 
 import com.oolonghoo.woonpc.util.PlaceholderUtil;
-import com.oolonghoo.woonpc.util.VersionUtil;
 import com.oolonghoo.woonpc.WooNPC;
 
 import java.lang.reflect.Constructor;
@@ -69,8 +66,6 @@ public class NpcImpl extends Npc {
     private static Constructor<?> gameProfileConstructorWithProps;
     private static Constructor<?> propertyMapConstructor;
     private static Method serverPlayerLevelMethod;
-    private static Method propertyMapPutAllMethod;
-    private static Method propertyMapReplaceValuesMethod;
     private static Constructor<?> playerInfoEntryConstructor;
     private static boolean initialized = false;
     
@@ -127,16 +122,6 @@ public class NpcImpl extends Npc {
             } catch (NoSuchMethodException ex) {
                 ex.printStackTrace();
             }
-        }
-        try {
-            propertyMapPutAllMethod = PropertyMap.class.getMethod("putAll", com.google.common.collect.Multimap.class);
-        } catch (NoSuchMethodException e) {
-            propertyMapPutAllMethod = null;
-        }
-        try {
-            propertyMapReplaceValuesMethod = PropertyMap.class.getMethod("replaceValues", String.class, Collection.class);
-        } catch (NoSuchMethodException e) {
-            propertyMapReplaceValuesMethod = null;
         }
         try {
             playerInfoEntryConstructor = ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructor(
@@ -223,35 +208,6 @@ public class NpcImpl extends Npc {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
-    }
-    
-    private static PropertyMap createPropertyMap(ImmutableMultimap<String, Property> map) {
-        try {
-            if (propertyMapConstructor != null) {
-                return (PropertyMap) propertyMapConstructor.newInstance(map);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        // 尝试使用其他构造函数
-        try {
-            // 尝试无参构造函数
-            Constructor<?> constructor = PropertyMap.class.getConstructor();
-            if (constructor != null) {
-                PropertyMap propertyMap = (PropertyMap) constructor.newInstance();
-                // 检查是否支持 put 操作
-                propertyMap.put("test", new Property("test", "test", "test"));
-                propertyMap.clear();
-                // 如果成功，添加真实数据
-                propertyMap.putAll(map);
-                return propertyMap;
-            }
-        } catch (Exception e) {
-            // 忽略，继续尝试其他方法
-        }
-        
         return null;
     }
     
@@ -911,8 +867,6 @@ public class NpcImpl extends Npc {
         }
         
         try {
-            LivingEntity livingEntity = (LivingEntity) npc;
-            
             Holder.Reference<net.minecraft.world.entity.ai.attributes.Attribute> scaleAttribute = 
                     BuiltInRegistries.ATTRIBUTE.get(Identifier.parse("minecraft:scale")).get();
             
