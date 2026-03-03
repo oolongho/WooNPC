@@ -122,6 +122,7 @@ public class MessageManager {
 
     /**
      * 颜色化字符串
+     * 将 & 颜色代码转换为 § 颜色代码
      * 
      * @param text 原始文本
      * @return 颜色化后的文本
@@ -130,7 +131,8 @@ public class MessageManager {
         if (text == null) {
             return "";
         }
-        return LegacyComponentSerializer.legacyAmpersand().serialize(
+        // 将 & 颜色代码转换为 § 颜色代码
+        return LegacyComponentSerializer.legacySection().serialize(
             LegacyComponentSerializer.legacyAmpersand().deserialize(text)
         );
     }

@@ -77,7 +77,8 @@ public abstract class Npc {
         for (int i = 0; i < 8; i++) {
             localName.append('&').append(LOCAL_NAME_CHARS[random.nextInt(LOCAL_NAME_CHARS.length)]);
         }
-        return LegacyComponentSerializer.legacyAmpersand().serialize(
+        // 将 & 颜色代码转换为 § 颜色代码
+        return LegacyComponentSerializer.legacySection().serialize(
             LegacyComponentSerializer.legacyAmpersand().deserialize(localName.toString())
         );
     }
