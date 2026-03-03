@@ -26,21 +26,15 @@ public final class ColorUtil {
         "gradient", "rainbow", "font", "color", "hex"
     );
     
-    private static final Pattern MINIMESSAGE_PATTERN = Pattern.compile(
-        "<(?:(/?)(?:" +
-        "black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|" +
-        "dark_gray|blue|green|aqua|red|light_purple|yellow|white|" +
-        "obfuscated|bold|strikethrough|underlined|italic|reset|" +
-        "br|newline|" +
-        "lang|key|translatable|translate|insertion|" +
-        "click|hover|suggest_command|run_command|open_url|copy_to_clipboard|" +
-        "gradient|rainbow|font|" +
-        "color|#[0-9a-fA-F]{6}" +
-        ")[^>]*|/?[a-z_]+:[^>]*)>",
-        Pattern.CASE_INSENSITIVE
-    );
+    private static final Pattern MINIMESSAGE_PATTERN = buildMiniMessagePattern();
     
     private ColorUtil() {
+    }
+    
+    private static Pattern buildMiniMessagePattern() {
+        String tagsRegex = String.join("|", MINIMESSAGE_TAGS);
+        String regex = "<(?:(/?)(?:" + tagsRegex + "|#[0-9a-fA-F]{6})[^>]*|/?[a-z_]+:[^>]*)>";
+        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
     
     /**
