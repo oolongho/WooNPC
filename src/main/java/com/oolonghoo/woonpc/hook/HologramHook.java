@@ -6,11 +6,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.plugin.Plugin;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class HologramHook {
     
@@ -46,6 +48,25 @@ public class HologramHook {
     private Method dhSetLinesMethod;
     private Method dhMoveHologramMethod;
     private Class<?> dhHologramClass;
+    
+    // FancyHolograms 反射缓存
+    private Class<?> fhPluginClass;
+    private Class<?> fhHologramManagerClass;
+    private Class<?> fhTextHologramDataClass;
+    private Class<?> fhHologramClass;
+    private Class<?> fhHologramDataClass;
+    private Method fhPluginGetMethod;
+    private Method fhGetHologramManagerMethod;
+    private Method fhHologramManagerCreateMethod;
+    private Method fhHologramManagerAddMethod;
+    private Method fhHologramManagerGetMethod;
+    private Method fhHologramManagerRemoveMethod;
+    private Constructor<?> fhTextHologramDataConstructor;
+    private Method fhHologramGetDataMethod;
+    private Method fhHologramSetPersistentMethod;
+    private Method fhHologramForceUpdateMethod;
+    private Method fhHologramDataSetTextMethod;
+    private Method fhHologramDataSetLocationMethod;
     
     public HologramHook(WooNPC plugin) {
         this.plugin = plugin;
@@ -174,9 +195,29 @@ public class HologramHook {
         }
         
         try {
-            // FancyHolograms API 暂不支持，需要查看其 API
-            // TODO: 实现 FancyHolograms Hook
-            return false;
+            fhPluginClass = Class.forName("de.oliver.FancyHologramsPlugin");
+            fhHologramManagerClass = Class.forName("de.oliver.FancyHolograms.api.hologram.HologramManager");
+            fhHologramClass = Class.forName("de.oliver.FancyHolograms.api.hologram.Hologram");
+            fhHologramDataClass = Class.forName("de.oliver.FancyHolograms.api.hologram.HologramData");
+            fhTextHologramDataClass = Class.forName("de.oliver.FancyHolograms.api.hologram.TextHologramData");
+            
+            fhPluginGetMethod = fhPluginClass.getMethod("get");
+            fhGetHologramManagerMethod = fhPluginClass.getMethod("getHologramManager");
+            fhHologramManagerCreateMethod = fhHologramManagerClass.getMethod("create", fhHologramDataClass);
+            fhHologramManagerAddMethod = fhHologramManagerClass.getMethod("addHologram", fhHologramClass);
+            fhHologramManagerGetMethod = fhHologramManagerClass.getMethod("getHologram", String.class);
+            fhHologramManagerRemoveMethod = fhHologramManagerClass.getMethod("removeHologram", String.class);
+            
+            fhTextHologramDataConstructor = fhTextHologramDataClass.getConstructor(String.class, Location.class);
+            
+            fhHologramGetDataMethod = fhHologramClass.getMethod("getData");
+            fhHologramSetPersistentMethod = fhHologramClass.getMethod("setPersistent", boolean.class);
+            fhHologramForceUpdateMethod = fhHologramClass.getMethod("forceUpdate");
+            
+            fhHologramDataSetTextMethod = fhTextHologramDataClass.getMethod("setText", List.class);
+            fhHologramDataSetLocationMethod = fhHologramDataClass.getMethod("setLocation", Location.class);
+            
+            return true;
         } catch (Exception e) {
             plugin.getLogger().warning("Hook FancyHolograms 失败: " + e.getMessage());
             return false;
@@ -211,7 +252,7 @@ public class HologramHook {
                 createDecentHologram(hologramId, hologramLocation, lines, npcId);
                 break;
             case FANCYHOLOGRAMS:
-                // TODO: 实现 FancyHolograms
+                createFancyHologram(hologramId, hologramLocation, lines, npcId);
                 break;
             default:
                 break;
@@ -267,6 +308,27 @@ public class HologramHook {
         }
     }
     
+    private void createFancyHologram(String hologramId, Location location, List<String> lines, String npcId) {
+        try {
+            Object pluginInstance = fhPluginGetMethod.invoke(null);
+            Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
+            
+            // 创建 TextHologramData
+            Object data = fhTextHologramDataConstructor.newInstance(hologramId, location);
+            fhHologramDataSetTextMethod.invoke(data, lines);
+            
+            // 创建全息图
+            Object hologram = fhHologramManagerCreateMethod.invoke(manager, data);
+            fhHologramSetPersistentMethod.invoke(hologram, false);
+            fhHologramManagerAddMethod.invoke(manager, hologram);
+            
+            npcHologramMap.put(npcId, hologramId);
+            plugin.getLogger().info("为 NPC " + npcId + " 创建了 FancyHolograms 全息图");
+        } catch (Exception e) {
+            plugin.getLogger().warning("创建 FancyHolograms 全息图失败: " + e.getMessage());
+        }
+    }
+    
     public void updateHologram(Npc npc, List<String> lines) {
         if (activePlugin == HologramPlugin.NONE || lines == null) {
             return;
@@ -285,6 +347,9 @@ public class HologramHook {
                 break;
             case DECENTHOLOGRAMS:
                 updateDecentHologram(hologramId, lines);
+                break;
+            case FANCYHOLOGRAMS:
+                updateFancyHologram(hologramId, lines);
                 break;
             default:
                 break;
@@ -345,6 +410,34 @@ public class HologramHook {
         }
     }
     
+    private void updateFancyHologram(String hologramId, List<String> lines) {
+        try {
+            Object pluginInstance = fhPluginGetMethod.invoke(null);
+            Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
+            Object hologramOpt = fhHologramManagerGetMethod.invoke(manager, hologramId);
+            
+            if (hologramOpt != null) {
+                // FancyHolograms 返回 Optional，需要处理
+                if (hologramOpt instanceof Optional) {
+                    Optional<?> opt = (Optional<?>) hologramOpt;
+                    if (opt.isPresent()) {
+                        Object hologram = opt.get();
+                        Object data = fhHologramGetDataMethod.invoke(hologram);
+                        fhHologramDataSetTextMethod.invoke(data, lines);
+                        fhHologramForceUpdateMethod.invoke(hologram);
+                    }
+                } else {
+                    // 直接返回 hologram 对象
+                    Object data = fhHologramGetDataMethod.invoke(hologramOpt);
+                    fhHologramDataSetTextMethod.invoke(data, lines);
+                    fhHologramForceUpdateMethod.invoke(hologramOpt);
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("更新 FancyHolograms 全息图失败: " + e.getMessage());
+        }
+    }
+    
     public void deleteHologram(String npcId) {
         if (activePlugin == HologramPlugin.NONE) {
             return;
@@ -366,6 +459,15 @@ public class HologramHook {
             case DECENTHOLOGRAMS:
                 try {
                     dhRemoveHologramMethod.invoke(null, hologramId);
+                } catch (Exception e) {
+                    // Ignore
+                }
+                break;
+            case FANCYHOLOGRAMS:
+                try {
+                    Object pluginInstance = fhPluginGetMethod.invoke(null);
+                    Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
+                    fhHologramManagerRemoveMethod.invoke(manager, hologramId);
                 } catch (Exception e) {
                     // Ignore
                 }
@@ -414,6 +516,21 @@ public class HologramHook {
                     // Ignore
                 }
                 break;
+            case FANCYHOLOGRAMS:
+                try {
+                    Object pluginInstance = fhPluginGetMethod.invoke(null);
+                    Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
+                    Object hologram = fhHologramManagerGetMethod.invoke(manager, hologramId);
+                    
+                    if (hologram != null) {
+                        Object data = fhHologramGetDataMethod.invoke(hologram);
+                        fhHologramDataSetLocationMethod.invoke(data, hologramLocation);
+                        fhHologramForceUpdateMethod.invoke(hologram);
+                    }
+                } catch (Exception e) {
+                    // Ignore
+                }
+                break;
             default:
                 break;
         }
@@ -436,6 +553,15 @@ public class HologramHook {
                 case DECENTHOLOGRAMS:
                     try {
                         dhRemoveHologramMethod.invoke(null, hologramId);
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                    break;
+                case FANCYHOLOGRAMS:
+                    try {
+                        Object pluginInstance = fhPluginGetMethod.invoke(null);
+                        Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
+                        fhHologramManagerRemoveMethod.invoke(manager, hologramId);
                     } catch (Exception e) {
                         // Ignore
                     }

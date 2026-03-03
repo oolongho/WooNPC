@@ -36,7 +36,6 @@ public final class PacketFactory {
     
     private static Method gameProfileIdMethod;
     private static Method gameProfileNameMethod;
-    private static Method gameProfilePropertiesMethod;
     private static Constructor<?> gameProfileConstructorWithProps;
     private static Constructor<?> propertyMapConstructor;
     
@@ -55,15 +54,6 @@ public final class PacketFactory {
         } catch (NoSuchMethodException e) {
             try {
                 gameProfileNameMethod = GameProfile.class.getMethod("name");
-            } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
-            }
-        }
-        try {
-            gameProfilePropertiesMethod = GameProfile.class.getMethod("getProperties");
-        } catch (NoSuchMethodException e) {
-            try {
-                gameProfilePropertiesMethod = GameProfile.class.getMethod("properties");
             } catch (NoSuchMethodException ex) {
                 ex.printStackTrace();
             }
