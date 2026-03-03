@@ -3,7 +3,7 @@ package com.oolonghoo.woonpc.action.types;
 import com.oolonghoo.woonpc.action.NpcAction;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -45,8 +45,8 @@ public class PlaySoundAction extends NpcAction {
                 pitch = Float.parseFloat(parts[2]);
             }
             
-            // 尝试通过 Registry 获取声音 (1.21+ 推荐方式)
-            Sound sound = Bukkit.getRegistry(Sound.class).get(
+            // 尝试通过 Registry 获取声音 (1.20.6+ 推荐方式)
+            Sound sound = Registry.SOUNDS.get(
                 org.bukkit.NamespacedKey.minecraft(soundName.toLowerCase(Locale.ROOT))
             );
             

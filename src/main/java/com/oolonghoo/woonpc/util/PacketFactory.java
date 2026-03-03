@@ -104,18 +104,6 @@ public final class PacketFactory {
         return "";
     }
     
-    private static PropertyMap getProfileProperties(GameProfile profile) {
-        if (profile == null) return null;
-        try {
-            if (gameProfilePropertiesMethod != null) {
-                return (PropertyMap) gameProfilePropertiesMethod.invoke(profile);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-    
     private static GameProfile createGameProfileWithSkin(UUID uuid, String name, String skinValue, String skinSignature) {
         try {
             if (propertyMapConstructor != null && gameProfileConstructorWithProps != null) {

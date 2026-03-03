@@ -41,6 +41,7 @@ public class HologramHook {
     private Method dhCreateHologramMethod;
     private Method dhGetHologramMethod;
     private Method dhRemoveHologramMethod;
+    @SuppressWarnings("unused")
     private Method dhAddLineMethod;
     private Method dhSetLinesMethod;
     private Method dhMoveHologramMethod;
