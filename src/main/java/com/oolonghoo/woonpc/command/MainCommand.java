@@ -1244,7 +1244,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         }
                     } else if (args.length == 5 && args[3].equalsIgnoreCase("delete")) {
                         // 动作索引补全
-                        Npc npc = npcManager.getNpc(args[1]);
+                        Npc npc = npcManager.getNpc(args[1].toLowerCase());
                         if (npc != null) {
                             ActionTrigger trigger = ActionTrigger.getByName(args[2]);
                             if (trigger != null) {

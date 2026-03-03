@@ -427,12 +427,18 @@ public class WooNPC extends JavaPlugin {
         
         applySkinConfig();
         
+        // 先移除所有 NPC
         for (Npc npc : npcManager.getAllNpcs()) {
             npc.removeForAll();
         }
         
+        // 清空 ActionManager 缓存
+        getActionManager().clearAllNpcActions();
+        
+        // 重新加载 NPC
         npcManager.loadNpcs();
         
+        // 重新生成所有 NPC 给玩家
         for (Npc npc : npcManager.getAllNpcs()) {
             npc.spawnForAll();
         }

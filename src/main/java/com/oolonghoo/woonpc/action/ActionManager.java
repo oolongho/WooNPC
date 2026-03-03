@@ -154,6 +154,13 @@ public class ActionManager {
     }
     
     /**
+     * 清除所有 NPC 的动作缓存
+     */
+    public void clearAllNpcActions() {
+        npcActions.clear();
+    }
+    
+    /**
      * 执行 NPC 动作
      * 
      * @param npc     NPC 对象

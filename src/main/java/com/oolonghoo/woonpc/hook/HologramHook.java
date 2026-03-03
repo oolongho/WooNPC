@@ -89,18 +89,36 @@ public class HologramHook {
             wooGetHologramMethod = wooHologramsApiClass.getMethod("getHologram", String.class);
             wooDeleteHologramMethod = wooHologramsApiClass.getMethod("deleteHologram", String.class);
             
-            // 尝试获取 setLine 方法，支持多种签名
+            // 尝试获取设置行的方法，支持多种可能的签名
+            // 优先尝试 setLines(List) 因为这是最可能用于批量设置的
             try {
-                // 尝试标准签名
-                wooSetLineMethod = hologramClass.getMethod("setLine", int.class, String.class);
+                wooSetLineMethod = hologramClass.getMethod("setLines", java.util.List.class);
             } catch (NoSuchMethodException e) {
-                // 尝试其他可能的签名
                 try {
-                    // 可能的替代方法
-                    wooSetLineMethod = hologramClass.getMethod("addLine", String.class);
+                    // 尝试 setLine(int, String)
+                    wooSetLineMethod = hologramClass.getMethod("setLine", int.class, String.class);
                 } catch (NoSuchMethodException e2) {
-                    // 尝试另一种可能
-                    wooSetLineMethod = hologramClass.getMethod("setLines", java.util.List.class);
+                    try {
+                        // 尝试 addLine(String)
+                        wooSetLineMethod = hologramClass.getMethod("addLine", String.class);
+                    } catch (NoSuchMethodException e3) {
+                        try {
+                            // 尝试 getLines() 返回的 List 的操作
+                            wooSetLineMethod = hologramClass.getMethod("getLines");
+                        } catch (NoSuchMethodException e4) {
+                            // 最后尝试其他可能的名称
+                            for (Method method : hologramClass.getMethods()) {
+                                String name = method.getName().toLowerCase();
+                                if (name.contains("line") || name.contains("text")) {
+                                    wooSetLineMethod = method;
+                                    break;
+                                }
+                            }
+                            if (wooSetLineMethod == null) {
+                                throw new NoSuchMethodException("No suitable method found for setting hologram lines");
+                            }
+                        }
+                    }
                 }
             }
             
@@ -108,7 +126,11 @@ public class HologramHook {
             try {
                 wooClearLinesMethod = hologramClass.getMethod("clearLines");
             } catch (NoSuchMethodException e) {
-                // 忽略，使用其他方式处理
+                try {
+                    wooClearLinesMethod = hologramClass.getMethod("clear");
+                } catch (NoSuchMethodException e2) {
+                    // 忽略，使用其他方式处理
+                }
             }
             
             wooTeleportMethod = hologramClass.getMethod("teleport", Location.class);
