@@ -1,11 +1,15 @@
 package com.oolonghoo.woonpc.action.types;
 
 import com.oolonghoo.woonpc.action.NpcAction;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Locale;
 
 /**
  * 播放声音动作
@@ -28,7 +32,7 @@ public class PlaySoundAction extends NpcAction {
         try {
             // 格式: sound_name [volume] [pitch]
             String[] parts = value.split(" ");
-            String soundName = parts[0].toUpperCase();
+            String soundName = parts[0].toLowerCase(Locale.ROOT);
             
             float volume = 1.0f;
             float pitch = 1.0f;
@@ -41,20 +45,20 @@ public class PlaySoundAction extends NpcAction {
                 pitch = Float.parseFloat(parts[2]);
             }
             
-            // 尝试获取声音
-            Sound sound;
-            try {
-                sound = Sound.valueOf(soundName);
-            } catch (IllegalArgumentException e) {
-                // 如果不是有效的枚举值，尝试使用自定义声音名称
-                player.playSound(player.getLocation(), soundName.toLowerCase(), volume, pitch);
-                return;
+            // 尝试通过 Registry 获取声音 (1.21+ 推荐方式)
+            Sound sound = Bukkit.getRegistry(Sound.class).get(
+                org.bukkit.NamespacedKey.minecraft(soundName.toLowerCase(Locale.ROOT))
+            );
+            
+            if (sound != null) {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            } else {
+                // 如果不是有效的注册声音，尝试使用自定义声音名称
+                player.playSound(player.getLocation(), soundName, volume, pitch);
             }
             
-            player.playSound(player.getLocation(), sound, volume, pitch);
-            
         } catch (Exception e) {
-            player.sendMessage(ChatColor.RED + "无法播放声音: " + value);
+            player.sendMessage(Component.text("无法播放声音: " + value, NamedTextColor.RED));
         }
     }
 }

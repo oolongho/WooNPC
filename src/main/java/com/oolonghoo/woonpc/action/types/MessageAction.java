@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.action.types;
 
 import com.oolonghoo.woonpc.action.NpcAction;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,11 +25,12 @@ public class MessageAction extends NpcAction {
         }
         
         // 支持颜色代码转换
-        String message = ChatColor.translateAlternateColorCodes('&', value);
+        String message = value;
         
         // 支持占位符替换
         message = message.replace("{player}", player.getName());
         
-        player.sendMessage(message);
+        // 使用 Adventure API 发送消息，支持 & 颜色代码
+        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(message));
     }
 }

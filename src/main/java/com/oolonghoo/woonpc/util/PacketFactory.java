@@ -275,6 +275,7 @@ public final class PacketFactory {
         return new ClientboundSetEquipmentPacket(entityId, equipmentList);
     }
 
+    @SuppressWarnings("deprecation")
     public static ClientboundSetPlayerTeamPacket createTeamPacket(String teamName, String playerName, ChatColor color, boolean create) {
         PlayerTeam team = new PlayerTeam(new Scoreboard(), teamName);
         team.getPlayers().clear();
@@ -286,6 +287,7 @@ public final class PacketFactory {
         return ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, create);
     }
 
+    @SuppressWarnings("deprecation")
     public static ClientboundSetPlayerTeamPacket createTeamPacket(String teamName, String playerName, ChatColor color, 
                                                                    boolean create, Team.CollisionRule collisionRule, 
                                                                    Team.Visibility nameTagVisibility) {
@@ -357,6 +359,7 @@ public final class PacketFactory {
         return new ClientboundAnimatePacket(entity, animationId);
     }
 
+    @SuppressWarnings("deprecation")
     private static net.minecraft.ChatFormatting convertToNMSChatFormatting(ChatColor color) {
         if (color == null) {
             return net.minecraft.ChatFormatting.WHITE;

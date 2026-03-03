@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.config;
 
 import com.oolonghoo.woonpc.WooNPC;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -130,6 +130,8 @@ public class MessageManager {
         if (text == null) {
             return "";
         }
-        return ChatColor.translateAlternateColorCodes('&', text);
+        return LegacyComponentSerializer.legacyAmpersand().serialize(
+            LegacyComponentSerializer.legacyAmpersand().deserialize(text)
+        );
     }
 }

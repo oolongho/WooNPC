@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.npc;
 
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -77,7 +77,9 @@ public abstract class Npc {
         for (int i = 0; i < 8; i++) {
             localName.append('&').append(LOCAL_NAME_CHARS[random.nextInt(LOCAL_NAME_CHARS.length)]);
         }
-        return ChatColor.translateAlternateColorCodes('&', localName.toString());
+        return LegacyComponentSerializer.legacyAmpersand().serialize(
+            LegacyComponentSerializer.legacyAmpersand().deserialize(localName.toString())
+        );
     }
     
     // ==================== 抽象方法 ====================

@@ -255,8 +255,12 @@ public class NpcImpl extends Npc {
             if (entityTypeReference.isPresent()) {
                 EntityType<?> nmsType = entityTypeReference.get().value();
                 try {
-                    EntityType.EntityFactory factory = (EntityType.EntityFactory) getFactory(nmsType);
-                    npc = factory.create(nmsType, serverLevel);
+                    EntityType.EntityFactory<?> factory = getFactory(nmsType);
+                    if (factory != null) {
+                        npc = createEntityFromFactory(factory, nmsType, serverLevel);
+                    } else {
+                        npc = nmsType.create(serverLevel, EntitySpawnReason.COMMAND);
+                    }
                 } catch (Exception e) {
                     npc = nmsType.create(serverLevel, EntitySpawnReason.COMMAND);
                 }
@@ -265,11 +269,16 @@ public class NpcImpl extends Npc {
         }
     }
     
-    private Object getFactory(EntityType<?> entityType) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private net.minecraft.world.entity.Entity createEntityFromFactory(EntityType.EntityFactory<?> factory, EntityType<?> type, ServerLevel level) {
+        return ((EntityType.EntityFactory) factory).create(type, level);
+    }
+    
+    private EntityType.EntityFactory<?> getFactory(EntityType<?> entityType) {
         try {
             Field factoryField = EntityType.class.getDeclaredField("factory");
             factoryField.setAccessible(true);
-            return factoryField.get(entityType);
+            return (EntityType.EntityFactory<?>) factoryField.get(entityType);
         } catch (Exception e) {
             return null;
         }
@@ -820,7 +829,9 @@ public class NpcImpl extends Npc {
             if (DATA_POSE_ACCESSOR == null) {
                 Field dataPoseField = Entity.class.getDeclaredField("DATA_POSE");
                 dataPoseField.setAccessible(true);
-                DATA_POSE_ACCESSOR = (EntityDataAccessor<Pose>) dataPoseField.get(null);
+                @SuppressWarnings("unchecked")
+                EntityDataAccessor<Pose> accessor = (EntityDataAccessor<Pose>) dataPoseField.get(null);
+                DATA_POSE_ACCESSOR = accessor;
             }
             
             npc.getEntityData().set(DATA_POSE_ACCESSOR, pose);

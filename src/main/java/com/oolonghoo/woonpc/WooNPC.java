@@ -124,7 +124,7 @@ public class WooNPC extends JavaPlugin {
         // 启动追踪器
         startTrackers();
         
-        getLogger().info("WooNPC v" + getDescription().getVersion() + " 已启用!");
+        getLogger().info("WooNPC v" + getPluginMeta().getVersion() + " 已启用!");
     }
     
     @Override
