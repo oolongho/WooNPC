@@ -416,21 +416,14 @@ public class HologramHook {
             Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
             Object hologramOpt = fhHologramManagerGetMethod.invoke(manager, hologramId);
             
-            if (hologramOpt != null) {
-                // FancyHolograms 返回 Optional，需要处理
-                if (hologramOpt instanceof Optional) {
-                    Optional<?> opt = (Optional<?>) hologramOpt;
-                    if (opt.isPresent()) {
-                        Object hologram = opt.get();
-                        Object data = fhHologramGetDataMethod.invoke(hologram);
-                        fhHologramDataSetTextMethod.invoke(data, lines);
-                        fhHologramForceUpdateMethod.invoke(hologram);
-                    }
-                } else {
-                    // 直接返回 hologram 对象
-                    Object data = fhHologramGetDataMethod.invoke(hologramOpt);
+            // FancyHolograms 返回 Optional<Hologram>
+            if (hologramOpt instanceof Optional) {
+                Optional<?> opt = (Optional<?>) hologramOpt;
+                if (opt.isPresent()) {
+                    Object hologram = opt.get();
+                    Object data = fhHologramGetDataMethod.invoke(hologram);
                     fhHologramDataSetTextMethod.invoke(data, lines);
-                    fhHologramForceUpdateMethod.invoke(hologramOpt);
+                    fhHologramForceUpdateMethod.invoke(hologram);
                 }
             }
         } catch (Exception e) {
@@ -520,12 +513,17 @@ public class HologramHook {
                 try {
                     Object pluginInstance = fhPluginGetMethod.invoke(null);
                     Object manager = fhGetHologramManagerMethod.invoke(pluginInstance);
-                    Object hologram = fhHologramManagerGetMethod.invoke(manager, hologramId);
+                    Object hologramOpt = fhHologramManagerGetMethod.invoke(manager, hologramId);
                     
-                    if (hologram != null) {
-                        Object data = fhHologramGetDataMethod.invoke(hologram);
-                        fhHologramDataSetLocationMethod.invoke(data, hologramLocation);
-                        fhHologramForceUpdateMethod.invoke(hologram);
+                    // FancyHolograms 返回 Optional<Hologram>
+                    if (hologramOpt instanceof Optional) {
+                        Optional<?> opt = (Optional<?>) hologramOpt;
+                        if (opt.isPresent()) {
+                            Object hologram = opt.get();
+                            Object data = fhHologramGetDataMethod.invoke(hologram);
+                            fhHologramDataSetLocationMethod.invoke(data, hologramLocation);
+                            fhHologramForceUpdateMethod.invoke(hologram);
+                        }
                     }
                 } catch (Exception e) {
                     // Ignore
