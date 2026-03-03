@@ -4,6 +4,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
+import java.util.Set;
+import java.util.regex.Pattern;
+
 /**
  * 颜色代码处理工具类
  * 支持 §、& 和 MiniMessage 格式
@@ -13,6 +16,29 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 public final class ColorUtil {
     
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    
+    private static final Set<String> MINIMESSAGE_TAGS = Set.of(
+        "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold", "gray",
+        "dark_gray", "blue", "green", "aqua", "red", "light_purple", "yellow", "white",
+        "obfuscated", "bold", "strikethrough", "underlined", "italic", "reset",
+        "br", "newline", "lang", "key", "translatable", "translate", "insertion",
+        "click", "hover", "suggest_command", "run_command", "open_url", "copy_to_clipboard",
+        "gradient", "rainbow", "font", "color", "hex"
+    );
+    
+    private static final Pattern MINIMESSAGE_PATTERN = Pattern.compile(
+        "<(?:(/?)(?:" +
+        "black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|" +
+        "dark_gray|blue|green|aqua|red|light_purple|yellow|white|" +
+        "obfuscated|bold|strikethrough|underlined|italic|reset|" +
+        "br|newline|" +
+        "lang|key|translatable|translate|insertion|" +
+        "click|hover|suggest_command|run_command|open_url|copy_to_clipboard|" +
+        "gradient|rainbow|font|" +
+        "color|#[0-9a-fA-F]{6}" +
+        ")[^>]*|/?[a-z_]+:[^>]*)>",
+        Pattern.CASE_INSENSITIVE
+    );
     
     private ColorUtil() {
     }
@@ -95,11 +121,12 @@ public final class ColorUtil {
     
     /**
      * 检查文本是否包含 MiniMessage 格式
+     * 使用正则表达式匹配有效的 MiniMessage 标签
      * 
      * @param text 文本
      * @return 是否包含 MiniMessage 格式
      */
     private static boolean containsMiniMessage(String text) {
-        return text.contains("<") && text.contains(">");
+        return MINIMESSAGE_PATTERN.matcher(text).find();
     }
 }
