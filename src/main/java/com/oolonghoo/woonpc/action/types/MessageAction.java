@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.action.types;
 
 import com.oolonghoo.woonpc.action.NpcAction;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import com.oolonghoo.woonpc.util.ColorUtil;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +30,7 @@ public class MessageAction extends NpcAction {
         // 支持占位符替换
         message = message.replace("{player}", player.getName());
         
-        // 使用 Adventure API 发送消息，支持 & 颜色代码
-        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(message));
+        // 使用 Adventure API 发送消息，支持 & 颜色代码和 MiniMessage
+        player.sendMessage(ColorUtil.toComponent(message));
     }
 }

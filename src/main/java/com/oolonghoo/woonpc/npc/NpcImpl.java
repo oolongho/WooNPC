@@ -37,6 +37,7 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.entity.Player;
 
+import com.oolonghoo.woonpc.util.ColorUtil;
 import com.oolonghoo.woonpc.util.PlaceholderUtil;
 import com.oolonghoo.woonpc.WooNPC;
 
@@ -481,13 +482,7 @@ public class NpcImpl extends Npc {
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
         
         String displayNameStr = PlaceholderUtil.setPlaceholder(player, data.getDisplayName());
-        net.kyori.adventure.text.Component displayName;
-        if (displayNameStr.contains("&") || displayNameStr.contains("§")) {
-            displayName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(displayNameStr);
-        } else {
-            displayName = net.kyori.adventure.text.Component.text(displayNameStr);
-        }
+        net.kyori.adventure.text.Component displayName = ColorUtil.toComponent(displayNameStr);
         Component vanillaComponent = PaperAdventure.asVanilla(displayName);
         
         if (!(npc instanceof ServerPlayer)) {

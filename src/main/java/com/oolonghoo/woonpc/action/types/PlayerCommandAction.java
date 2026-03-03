@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.action.types;
 
 import com.oolonghoo.woonpc.action.NpcAction;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import com.oolonghoo.woonpc.util.ColorUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -25,10 +25,8 @@ public class PlayerCommandAction extends NpcAction {
             return;
         }
         
-        // 将 & 颜色代码转换为 § 颜色代码（用于命令中的消息参数）
-        String command = LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(value)
-        );
+        // 将颜色代码转换（用于命令中的消息参数）
+        String command = ColorUtil.translate(value);
         
         // 支持占位符替换
         command = command.replace("{player}", player.getName());

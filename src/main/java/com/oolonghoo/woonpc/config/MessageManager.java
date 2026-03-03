@@ -1,7 +1,7 @@
 package com.oolonghoo.woonpc.config;
 
 import com.oolonghoo.woonpc.WooNPC;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import com.oolonghoo.woonpc.util.ColorUtil;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -122,18 +122,12 @@ public class MessageManager {
 
     /**
      * 颜色化字符串
-     * 将 & 颜色代码转换为 § 颜色代码
+     * 支持 §、& 和 MiniMessage 格式
      * 
      * @param text 原始文本
      * @return 颜色化后的文本
      */
     public static String colorize(String text) {
-        if (text == null) {
-            return "";
-        }
-        // 将 & 颜色代码转换为 § 颜色代码
-        return LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(text)
-        );
+        return ColorUtil.translate(text);
     }
 }
