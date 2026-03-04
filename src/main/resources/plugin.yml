@@ -5,6 +5,9 @@ api-version: '1.21'
 author: oolongho
 description: 轻量级高性能 NPC 插件
 
+libraries:
+  - com.google.code.gson:gson:2.10.1
+
 softdepend:
   - PlaceholderAPI
   - SkinsRestorer
