@@ -151,10 +151,12 @@ public class WooNPC extends JavaPlugin {
         saveAllNpcs();
         
         // 移除所有 NPC
-        int count = npcs.size();
-        for (Npc npc : npcs.values()) {
+        int count = npcManager.getNpcCount();
+        for (Npc npc : npcManager.getAllNpcs()) {
             npc.removeForAll();
         }
+        
+        // 清空本地缓存
         npcs.clear();
         
         // 关闭皮肤管理器
