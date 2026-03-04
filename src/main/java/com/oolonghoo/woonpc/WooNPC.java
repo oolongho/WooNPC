@@ -74,6 +74,9 @@ public class WooNPC extends JavaPlugin {
     public void onEnable() {
         instance = this;
         
+        // 核心信息
+        getLogger().info("配置加载完成");
+        
         // 初始化配置
         this.configLoader = new ConfigLoader(this);
         this.configLoader.load();
@@ -81,6 +84,7 @@ public class WooNPC extends JavaPlugin {
         // 初始化消息管理器
         this.messageManager = new MessageManager(this);
         this.messageManager.load();
+        getLogger().info("消息配置加载完成");
         
         // 初始化调试管理器
         this.debugManager = new DebugManager(this);
@@ -115,6 +119,7 @@ public class WooNPC extends JavaPlugin {
         
         // 加载NPC数据
         npcManager.loadNpcs();
+        getLogger().info("已加载 " + npcManager.getAllNpcs().size() + " 个 NPC");
         
         // 为所有玩家生成NPC
         for (Npc npc : npcManager.getAllNpcs()) {
@@ -123,6 +128,16 @@ public class WooNPC extends JavaPlugin {
         
         // 启动追踪器
         startTrackers();
+        
+        // 集成功能
+        if (PlaceholderUtil.isPlaceholderApiEnabled()) {
+            getLogger().info("PlaceholderAPI 集成已启用");
+        }
+        
+        // 功能模块
+        if (hologramHook.getActivePlugin() != HologramHook.HologramPlugin.NONE) {
+            getLogger().info("[" + hologramHook.getActivePlugin().name() + "] 全息图集成已启用");
+        }
         
         getLogger().info("WooNPC v" + getPluginMeta().getVersion() + " 已启用!");
     }
@@ -136,6 +151,7 @@ public class WooNPC extends JavaPlugin {
         saveAllNpcs();
         
         // 移除所有 NPC
+        int count = npcs.size();
         for (Npc npc : npcs.values()) {
             npc.removeForAll();
         }
@@ -146,11 +162,12 @@ public class WooNPC extends JavaPlugin {
             skinManager.shutdown();
         }
         
-        // 关闭全息图 Hook
+        // 关闭全息图Hook
         if (hologramHook != null) {
             hologramHook.shutdown();
         }
         
+        getLogger().info("已移除 " + count + " 个 NPC");
         getLogger().info("WooNPC 已禁用!");
     }
     
@@ -183,8 +200,6 @@ public class WooNPC extends JavaPlugin {
         actionManager.registerAction(new ExecuteRandomActionAction());
         actionManager.registerAction(new NeedPermissionAction());
         actionManager.registerAction(new PlayerCommandAsOpAction());
-        
-        getLogger().info("已注册 " + actionManager.getAllActions().size() + " 个默认动作类型");
     }
     
     private void startTrackers() {
