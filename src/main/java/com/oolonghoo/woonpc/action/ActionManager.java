@@ -1,5 +1,6 @@
 package com.oolonghoo.woonpc.action;
 
+import com.oolonghoo.woonpc.WooNPC;
 import com.oolonghoo.woonpc.npc.Npc;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -172,12 +173,6 @@ public class ActionManager {
         
         List<NpcAction.NpcActionData> directActions = getNpcActions(npcId, trigger);
         
-        if (directActions.isEmpty()) {
-            org.bukkit.Bukkit.getLogger().info("[WooNPC] No actions found for NPC " + npcId + " with trigger " + trigger);
-        } else {
-            org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing " + directActions.size() + " actions for NPC " + npcId);
-        }
-        
         List<NpcAction.NpcActionData> anyClickActions = Collections.emptyList();
         if (trigger == ActionTrigger.LEFT_CLICK || trigger == ActionTrigger.RIGHT_CLICK) {
             anyClickActions = getNpcActions(npcId, ActionTrigger.ANY_CLICK);
@@ -192,6 +187,8 @@ public class ActionManager {
             return;
         }
         
+        debug("Executing " + allActions.size() + " actions for NPC " + npcId + " with trigger " + trigger);
+        
         ActionExecutionContext context = new ActionExecutionContext(npc, player, trigger, allActions);
         
         while (context.getCurrentIndex() < allActions.size() && !context.isTerminated()) {
@@ -201,7 +198,7 @@ public class ActionManager {
             }
             
             try {
-                org.bukkit.Bukkit.getLogger().info("[WooNPC] Executing action: " + actionData.action().getName() + " with value: " + actionData.value());
+                debug("Executing action: " + actionData.action().getName() + " with value: " + actionData.value());
                 actionData.executeWithContext(context);
                 
                 if (context.isSkipRemaining()) {
@@ -215,7 +212,7 @@ public class ActionManager {
                     context.nextAction();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                WooNPC.getInstance().getLogger().warning("Error executing action " + actionData.action().getName() + ": " + e.getMessage());
                 context.nextAction();
             }
         }
@@ -236,5 +233,12 @@ public class ActionManager {
         
         List<NpcAction.NpcActionData> actionList = triggerMap.get(trigger);
         return actionList != null && !actionList.isEmpty();
+    }
+    
+    private void debug(String message) {
+        WooNPC plugin = WooNPC.getInstance();
+        if (plugin != null && plugin.getConfigLoader().isDebug()) {
+            plugin.getLogger().info("[ActionManager] " + message);
+        }
     }
 }

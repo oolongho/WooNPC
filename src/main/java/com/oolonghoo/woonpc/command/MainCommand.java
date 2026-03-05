@@ -1332,9 +1332,6 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         if (sender.hasPermission("woonpc.action")) {
             commands.add("action");
         }
-        if (sender.hasPermission("woonpc.attr")) {
-            commands.add("attr");
-        }
         if (sender.hasPermission("woonpc.reload")) {
             commands.add("reload");
         }

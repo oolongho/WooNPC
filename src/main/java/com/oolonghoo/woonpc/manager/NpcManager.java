@@ -394,11 +394,8 @@ public class NpcManager {
     private void loadActionsFromConfig(NpcData data, ConfigurationSection npcSection) {
         ConfigurationSection actionsSection = npcSection.getConfigurationSection("actions");
         if (actionsSection == null) {
-            plugin.getLogger().info("No actions section found for NPC " + data.getName());
             return;
         }
-        
-        plugin.getLogger().info("Loading actions for NPC " + data.getName());
         
         ActionManager actionManager = plugin.getActionManager();
         
@@ -427,19 +424,19 @@ public class NpcManager {
                     com.oolonghoo.woonpc.action.NpcAction action = actionManager.getAction(actionType);
                     if (action != null) {
                         actionList.add(new com.oolonghoo.woonpc.action.NpcAction.NpcActionData(order, action, value));
-                        plugin.getLogger().info("Loaded action: " + actionType + " for trigger: " + triggerName);
+                        debug.debug("Loaded action: " + actionType + " for trigger: " + triggerName);
                     } else {
-                        plugin.getLogger().warning("Unknown action type: " + actionType);
+                        plugin.getLogger().warning("Unknown action type: " + actionType + " for NPC " + data.getName());
                     }
                 }
                 
                 if (!actionList.isEmpty()) {
                     actionList.sort(Comparator.comparingInt(com.oolonghoo.woonpc.action.NpcAction.NpcActionData::order));
                     data.setActions(trigger, actionList);
-                    plugin.getLogger().info("Loaded " + actionList.size() + " actions for trigger " + triggerName);
+                    debug.debug("Loaded " + actionList.size() + " actions for trigger " + triggerName + " on NPC " + data.getName());
                 }
             } catch (IllegalArgumentException ignored) {
-                plugin.getLogger().warning("Invalid trigger name: " + triggerName);
+                plugin.getLogger().warning("Invalid trigger name: " + triggerName + " for NPC " + data.getName());
             }
         }
     }

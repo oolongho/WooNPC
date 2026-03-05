@@ -95,9 +95,7 @@ public class NpcInteractListener implements Listener {
         
         updateLastInteraction(player, npc);
         
-        ActionTrigger trigger = player.isSneaking() ? ActionTrigger.LEFT_CLICK : ActionTrigger.RIGHT_CLICK;
-        
-        executeNpcActions(npc, player, trigger);
+        executeNpcActions(npc, player, ActionTrigger.RIGHT_CLICK);
     }
     
     private Npc findNpcByEntityId(int entityId) {
@@ -115,7 +113,15 @@ public class NpcInteractListener implements Listener {
     }
     
     private boolean isOnCooldown(Player player, Npc npc) {
-        float cooldown = npc.getData().getInteractionCooldown();
+        float npcCooldown = npc.getData().getInteractionCooldown();
+        
+        float cooldown;
+        if (npcCooldown > 0) {
+            cooldown = npcCooldown;
+        } else {
+            cooldown = plugin.getConfigLoader().getClickCooldown() / 1000.0f;
+        }
+        
         if (cooldown <= 0) {
             return false;
         }
