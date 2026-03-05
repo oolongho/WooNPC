@@ -3,6 +3,7 @@ package com.oolonghoo.woonpc.action.types;
 import com.oolonghoo.woonpc.WooNPC;
 import com.oolonghoo.woonpc.action.ActionExecutionContext;
 import com.oolonghoo.woonpc.action.NpcAction;
+import com.oolonghoo.woonpc.npc.Npc;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -49,6 +50,25 @@ public class WaitAction extends NpcAction {
     }
     
     private void continueExecution(ActionExecutionContext context, int startIndex) {
+        // 验证 NPC 和玩家状态
+        Npc npc = context.getNpc();
+        Player player = context.getPlayer();
+        
+        // 检查 NPC 是否还存在
+        if (npc == null || npc.getData() == null) {
+            return;
+        }
+        
+        // 检查玩家是否还在线
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        
+        // 检查玩家是否还能看到 NPC（可选的严格检查）
+        if (!npc.isShownFor(player)) {
+            return;
+        }
+        
         // 重置上下文状态，确保延迟后的执行有干净的状态
         context.resetSkipRemaining();
         context.setJumpToIndex(-1);
@@ -79,7 +99,9 @@ public class WaitAction extends NpcAction {
                     context.setJumpToIndex(-1);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                WooNPC.getInstance().getLogger().warning(
+                    "Error executing delayed action " + actionData.action().getName() + ": " + e.getMessage()
+                );
             }
         }
     }

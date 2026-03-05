@@ -132,11 +132,14 @@ public class VisibilityTracker implements Runnable {
             rebuildWorldCache();
         }
         
-        // 更新玩家位置缓存
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld() != null) {
-                playerLocationCache.put(player.getUniqueId(), player.getLocation().clone());
-            }
+        // 在主线程获取玩家位置（线程安全）
+        // 由于这是异步任务，需要通过调度器在主线程获取位置
+        if (Bukkit.isPrimaryThread()) {
+            updatePlayerLocations();
+        } else {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                updatePlayerLocations();
+            });
         }
         
         // 按世界处理
@@ -164,7 +167,7 @@ public class VisibilityTracker implements Runnable {
                 // 使用缓存的位置
                 Location playerLocation = playerLocationCache.get(player.getUniqueId());
                 if (playerLocation == null) {
-                    playerLocation = player.getLocation();
+                    continue;
                 }
                 
                 // 更新该世界中所有 NPC 对该玩家的可见性
@@ -180,6 +183,17 @@ public class VisibilityTracker implements Runnable {
             onlinePlayers.add(player.getUniqueId());
         }
         playerLocationCache.keySet().retainAll(onlinePlayers);
+    }
+    
+    /**
+     * 更新玩家位置缓存（必须在主线程调用）
+     */
+    private void updatePlayerLocations() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() != null && player.isOnline()) {
+                playerLocationCache.put(player.getUniqueId(), player.getLocation().clone());
+            }
+        }
     }
     
     /**

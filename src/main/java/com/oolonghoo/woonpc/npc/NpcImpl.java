@@ -242,8 +242,23 @@ public class NpcImpl extends Npc {
     
     @Override
     public void create() {
+        // 空值检查
+        if (data == null) {
+            throw new IllegalStateException("NPC data is null");
+        }
+        
+        Location location = data.getLocation();
+        if (location == null) {
+            throw new IllegalStateException("NPC location is null for: " + data.getName());
+        }
+        
+        org.bukkit.World bukkitWorld = location.getWorld();
+        if (bukkitWorld == null) {
+            throw new IllegalStateException("NPC world is null for: " + data.getName());
+        }
+        
         MinecraftServer minecraftServer = ((CraftServer) Bukkit.getServer()).getServer();
-        ServerLevel serverLevel = ((CraftWorld) data.getLocation().getWorld()).getHandle();
+        ServerLevel serverLevel = ((CraftWorld) bukkitWorld).getHandle();
         GameProfile gameProfile = new GameProfile(uuid, localName);
         
         if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
