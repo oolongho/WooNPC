@@ -554,43 +554,34 @@ public class NpcData {
         float pitch = (float) section.getDouble("location.pitch");
         Location location = new Location(world, x, y, z, yaw, pitch);
         
-        // 创建基础数据
-        NpcData data = new NpcData(name, null, location);
-        
-        // 使用反射设置 final id 字段
-        try {
-            java.lang.reflect.Field idField = NpcData.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(data, id);
-        } catch (Exception ignored) {
-        }
-        
         // 皮肤
-        data.skinName = section.getString("skin.name", "");
-        data.skinMirror = section.getBoolean("skin.mirror", false);
-        data.skinValue = section.getString("skin.value", "");
-        data.skinSignature = section.getString("skin.signature", "");
+        String skinName = section.getString("skin.name", "");
+        boolean skinMirror = section.getBoolean("skin.mirror", false);
+        String skinValue = section.getString("skin.value", "");
+        String skinSignature = section.getString("skin.signature", "");
         
         // 显示设置
-        data.displayName = section.getString("display-name", name);
-        data.showInTab = section.getBoolean("show-in-tab", false);
-        data.turnToPlayer = section.getBoolean("turn-to-player", false);
-        data.collidable = section.getBoolean("collidable", false);
+        String displayName = section.getString("display-name", name);
+        boolean showInTab = section.getBoolean("show-in-tab", false);
+        boolean turnToPlayer = section.getBoolean("turn-to-player", false);
+        boolean collidable = section.getBoolean("collidable", false);
         
         // 发光效果
-        data.glowing = section.getBoolean("glowing.enabled", false);
+        boolean glowing = section.getBoolean("glowing.enabled", false);
         String colorName = section.getString("glowing.color", "white");
-        data.glowingColor = GlowingColor.fromConfigName(colorName);
+        GlowingColor glowingColor = GlowingColor.fromConfigName(colorName);
         
         // 实体类型
         String typeName = section.getString("type", "PLAYER");
+        EntityType type;
         try {
-            data.type = EntityType.valueOf(typeName);
+            type = EntityType.valueOf(typeName);
         } catch (IllegalArgumentException e) {
-            data.type = EntityType.PLAYER;
+            type = EntityType.PLAYER;
         }
         
         // 装备
+        Map<NpcEquipmentSlot, ItemStack> equipment = new ConcurrentHashMap<>();
         ConfigurationSection equipSection = section.getConfigurationSection("equipment");
         if (equipSection != null) {
             for (String slotName : equipSection.getKeys(false)) {
@@ -598,21 +589,38 @@ public class NpcData {
                 if (slot != null) {
                     ItemStack item = equipSection.getItemStack(slotName);
                     if (item != null) {
-                        data.equipment.put(slot, item);
+                        equipment.put(slot, item);
                     }
                 }
             }
         }
         
         // 全息文字
-        List<String> lines = section.getStringList("hologram");
-        data.hologramLines.addAll(lines);
+        List<String> hologramLines = section.getStringList("hologram");
         
         // 姿势
-        data.pose = section.getString("pose", "STANDING");
+        String pose = section.getString("pose", "STANDING");
         
         // 缩放
-        data.scale = (float) section.getDouble("scale", 1.0);
+        float scale = (float) section.getDouble("scale", 1.0);
+        
+        // 可见距离
+        int visibilityDistance = section.getInt("visibility-distance", -1);
+        
+        // 转向距离
+        int turnToPlayerDistance = section.getInt("turn-distance", -1);
+        
+        // 使用完整构造函数创建 NpcData，避免反射修改 final 字段
+        NpcData data = new NpcData(
+                id, name, null, displayName,
+                skinValue, skinSignature, skinMirror,
+                location, showInTab, glowing,
+                glowingColor, type,
+                equipment, turnToPlayer, turnToPlayerDistance,
+                visibilityDistance, 0,
+                hologramLines, pose, scale,
+                collidable, skinName
+        );
         
         // 效果
         List<String> effectList = section.getStringList("effects");
@@ -622,12 +630,6 @@ public class NpcData {
                 data.effects.add(effect);
             }
         }
-        
-        // 可见距离
-        data.visibilityDistance = section.getInt("visibility-distance", -1);
-        
-        // 转向距离
-        data.turnToPlayerDistance = section.getInt("turn-distance", -1);
         
         // 动作数据暂时存储为原始格式，后续由 NpcManager 处理
         ConfigurationSection actionsSection = section.getConfigurationSection("actions");

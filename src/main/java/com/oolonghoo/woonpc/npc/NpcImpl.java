@@ -377,7 +377,7 @@ public class NpcImpl extends Npc {
         isVisibleForPlayer.put(player.getUniqueId(), true);
         
         if (!data.isShowInTab() && npc instanceof ServerPlayer) {
-            Bukkit.getScheduler().runTaskLaterAsynchronously(
+            Bukkit.getScheduler().runTaskLater(
                     Bukkit.getPluginManager().getPlugin("WooNPC"),
                     () -> {
                         ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 

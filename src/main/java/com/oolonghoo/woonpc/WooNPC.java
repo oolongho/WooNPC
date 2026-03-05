@@ -29,8 +29,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * WooNPC - 轻量级高性能 NPC 插件
@@ -66,9 +64,6 @@ public class WooNPC extends JavaPlugin {
     
     // 占位符刷新任务 ID
     private int placeholderRefreshTaskId = -1;
-    
-    // NPC 存储 (临时保留用于兼容)
-    private final Map<String, Npc> npcs = new ConcurrentHashMap<>();
     
     @Override
     public void onEnable() {
@@ -155,9 +150,6 @@ public class WooNPC extends JavaPlugin {
         for (Npc npc : npcManager.getAllNpcs()) {
             npc.removeForAll();
         }
-        
-        // 清空本地缓存
-        npcs.clear();
         
         // 关闭皮肤管理器
         if (skinManager != null) {
@@ -268,61 +260,7 @@ public class WooNPC extends JavaPlugin {
         }
     }
     
-    // ==================== NPC 管理方法 ====================
-    
-    /**
-     * 创建新 NPC
-     * 
-     * @param data NPC 数据
-     * @return 创建的 NPC
-     */
-    public Npc createNpc(NpcData data) {
-        NpcImpl npc = new NpcImpl(data);
-        npc.create();
-        npcs.put(data.getId(), npc);
-        npc.spawnForAll();
-        return npc;
-    }
-    
-    /**
-     * 获取 NPC
-     * 
-     * @param id NPC ID
-     * @return NPC 对象，如果不存在则返回 null
-     */
-    public Npc getNpc(String id) {
-        return npcs.get(id);
-    }
-    
-    /**
-     * 根据 NPC 名称获取 NPC
-     * 
-     * @param name NPC 名称
-     * @return NPC 对象，如果不存在则返回 null
-     */
-    public Npc getNpcByName(String name) {
-        for (Npc npc : npcs.values()) {
-            if (npc.getData().getName().equalsIgnoreCase(name)) {
-                return npc;
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * 移除 NPC
-     * 
-     * @param id NPC ID
-     * @return 是否成功移除
-     */
-    public boolean removeNpc(String id) {
-        Npc npc = npcs.remove(id);
-        if (npc != null) {
-            npc.removeForAll();
-            return true;
-        }
-        return false;
-    }
+    // ==================== NPC 管理方法 (委托给 NpcManager) ====================
     
     /**
      * 获取所有 NPC
@@ -339,7 +277,7 @@ public class WooNPC extends JavaPlugin {
      * @return NPC 数量
      */
     public int getNpcCount() {
-        return npcs.size();
+        return npcManager.getNpcCount();
     }
     
     // ==================== 静态方法 ====================
