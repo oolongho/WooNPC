@@ -97,20 +97,28 @@ public final class ColorUtil {
         
         String result = text;
         
-        if (containsMiniMessage(result)) {
-            try {
-                Component component = MINI_MESSAGE.deserialize(result);
-                result = MINI_MESSAGE.serialize(component);
-            } catch (Exception ignored) {
-            }
-        }
+        // 先移除 MiniMessage 标签
+        result = result.replaceAll("<[^>]+>", "");
         
-        result = LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacySection().deserialize(result)
-        );
+        // 移除 § 和 & 颜色代码
+        result = result.replaceAll("[§&][0-9a-fk-orA-FK-OR]", "");
         
-        return result.replaceAll("[§&][0-9a-fk-orA-FK-OR]", "")
-                     .replaceAll("<[^>]+>", "");
+        // 移除 hex 颜色代码格式 §x§R§R§G§G§B§B
+        result = result.replaceAll("§x(?:§[0-9a-fA-F]){6}", "");
+        result = result.replaceAll("&x(?:&[0-9a-fA-F]){6}", "");
+        
+        return result.trim();
+    }
+    
+    /**
+     * 生成用于 ID 的名称（剥离颜色代码，转小写）
+     * 
+     * @param name 原始名称
+     * @return 可用作 ID 的名称
+     */
+    public static String toIdName(String name) {
+        String stripped = stripColor(name);
+        return stripped.toLowerCase().replaceAll("[^a-z0-9_]", "_");
     }
     
     /**

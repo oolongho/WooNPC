@@ -13,6 +13,7 @@ import com.oolonghoo.woonpc.npc.NpcEffect;
 import com.oolonghoo.woonpc.npc.NpcEquipmentSlot;
 import com.oolonghoo.woonpc.npc.NpcImpl;
 import com.oolonghoo.woonpc.npc.NpcPose;
+import com.oolonghoo.woonpc.util.ColorUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -84,6 +85,8 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 return handleEffect(sender, args);
             case "action":
                 return handleAction(sender, args);
+            case "displayname":
+                return handleDisplayname(sender, args);
             case "movehere":
                 return handleMoveHere(sender, args);
             case "moveto":
@@ -105,7 +108,10 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
     /**
      * 创建NPC
-     * 用法: /npc create <名称> [--type <类型>]
+     * 用法: /npc create <id> [--type <类型>]
+     * 
+     * id: NPC 的唯一标识符（忽略颜色代码，用于命令引用）
+     * displayName: 默认与 id 相同，可通过 /npc displayname 修改
      */
     private boolean handleCreate(CommandSender sender, String[] args) {
         if (!sender.hasPermission("woonpc.create")) {
@@ -124,11 +130,19 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
 
         Player player = (Player) sender;
-        String name = args[1];
+        String inputName = args[1];
+        
+        // 生成 ID（剥离颜色代码，转小写，只保留字母数字下划线）
+        String npcId = ColorUtil.toIdName(inputName);
+        
+        if (npcId.isEmpty()) {
+            sender.sendMessage(msg.getWithPrefix("npc.invalid-id"));
+            return true;
+        }
 
-        // 检查名称是否已存在
-        if (npcManager.exists(name)) {
-            sender.sendMessage(msg.getWithPrefix("npc.already-exists", "name", name));
+        // 检查 ID 是否已存在
+        if (npcManager.exists(npcId)) {
+            sender.sendMessage(msg.getWithPrefix("npc.already-exists", "name", npcId));
             return true;
         }
 
@@ -146,16 +160,22 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
 
         // 通过 NpcManager 创建 NPC (带实体类型)
-        Npc npc = npcManager.createNpc(name, player.getLocation(), entityType);
+        // displayName 默认使用输入的名称（保留颜色代码）
+        Npc npc = npcManager.createNpc(npcId, player.getLocation(), entityType);
         if (npc == null) {
             sender.sendMessage(msg.getWithPrefix("npc.limit-reached"));
             return true;
         }
         
+        // 设置显示名称（支持颜色代码）
+        String displayName = ColorUtil.translate(inputName);
+        npc.getData().setDisplayName(displayName);
+        npc.updateForAll();
+        
         // 生成给所有玩家
         npc.spawnForAll();
 
-        sender.sendMessage(msg.getWithPrefix("npc.created", "name", name));
+        sender.sendMessage(msg.getWithPrefix("npc.created", "name", npcId, "displayname", displayName));
         return true;
     }
 
@@ -853,6 +873,47 @@ public class MainCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
+     * 设置NPC显示名称
+     * 用法: /npc displayname <名称> <显示名称>
+     * 显示名称支持颜色代码
+     */
+    private boolean handleDisplayname(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("woonpc.edit")) {
+            sender.sendMessage(msg.getWithPrefix("no-permission"));
+            return true;
+        }
+
+        if (args.length < 3) {
+            sender.sendMessage(msg.getWithPrefix("help.displayname"));
+            return true;
+        }
+
+        String name = args[1];
+        Npc npc = npcManager.getNpc(name);
+        if (npc == null) {
+            sender.sendMessage(msg.getWithPrefix("npc-not-found", "npc", name));
+            return true;
+        }
+
+        // 合并剩余参数作为显示名称
+        StringBuilder displayNameBuilder = new StringBuilder();
+        for (int i = 2; i < args.length; i++) {
+            if (i > 2) {
+                displayNameBuilder.append(" ");
+            }
+            displayNameBuilder.append(args[i]);
+        }
+        
+        String displayName = ColorUtil.translate(displayNameBuilder.toString());
+        npc.getData().setDisplayName(displayName);
+        npc.updateForAll();
+        
+        npcManager.saveNpcs();
+        sender.sendMessage(msg.getWithPrefix("displayname.set", "name", name, "displayname", displayName));
+        return true;
+    }
+
+    /**
      * 移动NPC到当前位置
      * 用法: /npc movehere <名称>
      */
@@ -1094,6 +1155,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         if (sender.hasPermission("woonpc.edit")) {
             sender.sendMessage(msg.get("help.move", "command", label));
             sender.sendMessage(msg.get("help.copy", "command", label));
+            sender.sendMessage(msg.get("help.displayname", "command", label));
         }
         if (sender.hasPermission("woonpc.use")) {
             sender.sendMessage(msg.get("help.teleport", "command", label));
@@ -1322,6 +1384,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
             commands.add("movehere");
             commands.add("moveto");
             commands.add("copy");
+            commands.add("displayname");
         }
         if (sender.hasPermission("woonpc.equipment")) {
             commands.add("equip");

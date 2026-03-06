@@ -11,12 +11,13 @@ unknown-command: "&c未知的命令！请使用 /{command} help 查看帮助"
 
 # NPC 创建/删除
 npc:
-  created: "&a成功创建NPC: {name}"
+  created: "&a成功创建NPC &e{name} &a，显示名称: &r{displayname}"
   removed: "&a成功删除NPC: {name}"
   already-exists: "&c名为 {name} 的NPC已存在！"
   limit-reached: "&c已达到NPC数量上限！"
   invalid-type: "&c无效的实体类型: {type}"
   invalid-location: "&cNPC 位置无效！"
+  invalid-id: "&c无效的NPC ID！ID只能包含字母、数字和下划线"
   
   # NPC 信息
   info:
@@ -128,6 +129,10 @@ move:
 copy:
   success: "&a成功复制NPC {source} 为 {target}"
 
+# 显示名称
+displayname:
+  set: "&a成功设置NPC {name} 的显示名称为: &r{displayname}"
+
 # 传送
 teleport:
   success: "&a已传送到NPC {name}"
@@ -135,22 +140,23 @@ teleport:
 # 帮助
 help:
   header: "&e========== &6WooNPC 帮助 &e=========="
-  create: "&e/{command} create <名称> [--type <类型>] &7- 创建NPC"
-  remove: "&e/{command} remove <名称> &7- 删除NPC"
-  skin: "&e/{command} skin <名称> <皮肤/@mirror> &7- 设置皮肤"
-  glowing: "&e/{command} glowing <名称> <true/false> [颜色] &7- 设置发光"
-  hologram: "&e/{command} hologram <名称> <add/remove/set/clear/list> [内容] &7- 全息文字"
-  turn: "&e/{command} turn_to_player <名称> <true/false> &7- 视角跟随"
-  tab: "&e/{command} show_in_tab <名称> <true/false> &7- Tab显示"
-  equipment: "&e/{command} equipment <名称> <槽位> [@hand] &7- 设置装备"
-  pose: "&e/{command} pose <名称> <姿势> &7- 设置姿势"
-  scale: "&e/{command} scale <名称> <比例> &7- 设置缩放"
-  effect: "&e/{command} effect <名称> <效果> <true/false> &7- 设置效果"
-  action: "&e/{command} action <名称> <触发器> <add/remove/list/clear> [类型] [值] &7- 动作"
-  move: "&e/{command} movehere <名称> &7- 移动到此处"
-  copy: "&e/{command} copy <名称> <新名称> &7- 复制NPC"
-  teleport: "&e/{command} tp <名称> &7- 传送到NPC"
+  create: "&e/{command} create <id> [--type <类型>] &7- 创建NPC (id为唯一标识)"
+  remove: "&e/{command} remove <id> &7- 删除NPC"
+  skin: "&e/{command} skin <id> <皮肤/@mirror> &7- 设置皮肤"
+  glowing: "&e/{command} glowing <id> <true/false> [颜色] &7- 设置发光"
+  hologram: "&e/{command} hologram <id> <add/remove/set/clear/list> [内容] &7- 全息文字"
+  turn: "&e/{command} turn_to_player <id> <true/false> &7- 视角跟随"
+  tab: "&e/{command} show_in_tab <id> <true/false> &7- Tab显示"
+  equipment: "&e/{command} equipment <id> <槽位> [@hand] &7- 设置装备"
+  pose: "&e/{command} pose <id> <姿势> &7- 设置姿势"
+  scale: "&e/{command} scale <id> <比例> &7- 设置缩放"
+  effect: "&e/{command} effect <id> <效果> <true/false> &7- 设置效果"
+  action: "&e/{command} action <id> <触发器> <add/remove/list/clear> [类型] [值] &7- 动作"
+  move: "&e/{command} movehere <id> &7- 移动到此处"
+  copy: "&e/{command} copy <id> <新id> &7- 复制NPC"
+  teleport: "&e/{command} tp <id> &7- 传送到NPC"
   list: "&e/{command} list &7- 列出所有NPC"
-  info: "&e/{command} info <名称> &7- 查看NPC信息"
+  info: "&e/{command} info <id> &7- 查看NPC信息"
+  displayname: "&e/{command} displayname <id> <显示名称> &7- 设置显示名称(支持颜色)"
   reload: "&e/{command} reload &7- 重载配置"
   footer: "&e===================================="
