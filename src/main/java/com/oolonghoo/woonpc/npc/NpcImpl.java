@@ -513,7 +513,9 @@ public class NpcImpl extends Npc {
         boolean shouldCreateTeam = !glowingColor.isDisabled() || !data.getDisplayName().equalsIgnoreCase("<empty>");
         
         if (shouldCreateTeam) {
-            PlayerTeam team = new PlayerTeam(new Scoreboard(), "npc-" + localName);
+            // 使用 UUID 作为 Team 名称的一部分，确保唯一性
+            String teamName = "npc-" + uuid.toString().substring(0, 8);
+            PlayerTeam team = new PlayerTeam(new Scoreboard(), teamName);
             team.getPlayers().clear();
             team.getPlayers().add(npc instanceof ServerPlayer npcPlayer 
                     ? getProfileName(npcPlayer.getGameProfile())
