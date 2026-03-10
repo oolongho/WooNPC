@@ -112,9 +112,9 @@ public class ActionManager {
             if (plugin instanceof com.oolonghoo.woonpc.WooNPC wooNPC) {
                 com.oolonghoo.woonpc.npc.Npc npc = wooNPC.getNpcManager().getNpc(java.util.UUID.fromString(npcId));
                 if (npc != null) {
-                    List<NpcAction.NpcActionData> actions = npc.getData().getActions(trigger);
-                    if (actions != null && !actions.isEmpty()) {
-                        return new ArrayList<>(actions);
+                    List<NpcAction.NpcActionData> npcActionList = npc.getData().getActions(trigger);
+                    if (npcActionList != null && !npcActionList.isEmpty()) {
+                        return new ArrayList<>(npcActionList);
                     }
                 }
             }

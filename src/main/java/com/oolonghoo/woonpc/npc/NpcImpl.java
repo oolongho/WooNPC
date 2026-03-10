@@ -9,8 +9,6 @@ import com.mojang.datafixers.util.Pair;
 import io.papermc.paper.adventure.PaperAdventure;
 import net.minecraft.Optionull;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.Packet;
@@ -84,7 +82,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfileNameMethod = GameProfile.class.getMethod("name");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getName method: " + ex.getMessage());
             }
         }
         try {
@@ -93,7 +91,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfileIdMethod = GameProfile.class.getMethod("id");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getId method: " + ex.getMessage());
             }
         }
         try {
@@ -102,7 +100,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfilePropertiesMethod = GameProfile.class.getMethod("properties");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getProperties method: " + ex.getMessage());
             }
         }
         try {
@@ -121,7 +119,7 @@ public class NpcImpl extends Npc {
             try {
                 serverPlayerLevelMethod = ServerPlayer.class.getMethod("level");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] Failed to get ServerPlayer.level method: " + ex.getMessage());
             }
         }
         try {
@@ -148,7 +146,7 @@ public class NpcImpl extends Npc {
                 return (String) gameProfileNameMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to get profile name: " + e.getMessage());
         }
         return "";
     }
@@ -160,7 +158,7 @@ public class NpcImpl extends Npc {
                 return (UUID) gameProfileIdMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to get profile id: " + e.getMessage());
         }
         return null;
     }
@@ -172,7 +170,7 @@ public class NpcImpl extends Npc {
                 return (PropertyMap) gameProfilePropertiesMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to get profile properties: " + e.getMessage());
         }
         return createEmptyPropertyMap();
     }
@@ -184,7 +182,7 @@ public class NpcImpl extends Npc {
                 return (ServerLevel) serverPlayerLevelMethod.invoke(player);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to get server level: " + e.getMessage());
         }
         return null;
     }
@@ -195,7 +193,7 @@ public class NpcImpl extends Npc {
                 return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, properties);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to create GameProfile with properties: " + e.getMessage());
         }
         // 无法创建带属性的 GameProfile，返回基本的 GameProfile
         return new GameProfile(uuid, name, properties);
@@ -207,7 +205,7 @@ public class NpcImpl extends Npc {
                 return (PropertyMap) propertyMapConstructor.newInstance(ImmutableMultimap.of());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] Failed to create empty PropertyMap: " + e.getMessage());
         }
         return null;
     }

@@ -221,6 +221,17 @@ public class NpcManager {
         NpcData data = new NpcData(name, null, location);
         data.setType(entityType);
         Npc npc = new NpcImpl(data);
+        
+        // 触发 NPC 创建事件
+        com.oolonghoo.woonpc.event.NpcCreateEvent createEvent = 
+            new com.oolonghoo.woonpc.event.NpcCreateEvent(npc);
+        org.bukkit.Bukkit.getPluginManager().callEvent(createEvent);
+        
+        if (createEvent.isCancelled()) {
+            debug.debug("NPC 创建被取消: " + name);
+            return null;
+        }
+        
         npc.create();
         
         npcsByName.put(name.toLowerCase(), npc);
@@ -243,10 +254,22 @@ public class NpcManager {
      * @return 是否成功删除
      */
     public boolean removeNpc(String name) {
-        Npc npc = npcsByName.remove(name.toLowerCase());
+        Npc npc = npcsByName.get(name.toLowerCase());
         if (npc == null) {
             return false;
         }
+        
+        // 触发 NPC 删除事件
+        com.oolonghoo.woonpc.event.NpcDeleteEvent deleteEvent = 
+            new com.oolonghoo.woonpc.event.NpcDeleteEvent(npc);
+        org.bukkit.Bukkit.getPluginManager().callEvent(deleteEvent);
+        
+        if (deleteEvent.isCancelled()) {
+            debug.debug("NPC 删除被取消: " + name);
+            return false;
+        }
+        
+        npcsByName.remove(name.toLowerCase());
         
         UUID npcUuid = UUID.fromString(npc.getData().getId());
         npcsById.remove(npcUuid);
@@ -256,6 +279,9 @@ public class NpcManager {
         
         // 从世界缓存移除
         plugin.getVisibilityTracker().removeNpcFromWorldCache(npc);
+        
+        // 取消所有待执行的任务
+        npc.cancelAllPendingTasks();
         
         // 移除所有玩家的NPC
         npc.removeForAll();

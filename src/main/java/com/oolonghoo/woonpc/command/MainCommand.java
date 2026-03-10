@@ -208,6 +208,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
      * 列出所有NPC
      * 用法: /npc list
      */
+    @SuppressWarnings("unused")
     private boolean handleList(CommandSender sender, String[] args) {
         if (!sender.hasPermission("woonpc.use")) {
             sender.sendMessage(msg.getWithPrefix("no-permission"));
@@ -1102,6 +1103,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
      * 重载配置
      * 用法: /npc reload
      */
+    @SuppressWarnings("unused")
     private boolean handleReload(CommandSender sender, String[] args) {
         if (!sender.hasPermission("woonpc.reload")) {
             sender.sendMessage(msg.getWithPrefix("no-permission"));

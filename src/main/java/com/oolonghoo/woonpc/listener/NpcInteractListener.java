@@ -146,9 +146,48 @@ public class NpcInteractListener implements Listener {
             return;
         }
         
+        // 获取动作列表
+        java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> actions = 
+            new java.util.ArrayList<>();
+        java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> directActions = 
+            actionManager.getNpcActions(npc.getData().getId(), trigger);
+        if (directActions != null) {
+            actions.addAll(directActions);
+        }
+        
+        // 添加 ANY_CLICK 触发器的动作
+        if (trigger == ActionTrigger.LEFT_CLICK || trigger == ActionTrigger.RIGHT_CLICK) {
+            java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> anyClickActions = 
+                actionManager.getNpcActions(npc.getData().getId(), ActionTrigger.ANY_CLICK);
+            if (anyClickActions != null) {
+                actions.addAll(anyClickActions);
+            }
+        }
+        
+        // 触发 NPC 交互事件
+        com.oolonghoo.woonpc.event.NpcInteractEvent interactEvent = 
+            new com.oolonghoo.woonpc.event.NpcInteractEvent(npc, player, trigger, actions);
+        org.bukkit.Bukkit.getPluginManager().callEvent(interactEvent);
+        
+        if (interactEvent.isCancelled()) {
+            return;
+        }
+        
+        // 使用事件中可能被修改的动作列表
+        actions = interactEvent.getActions();
+        
+        if (actions.isEmpty()) {
+            return;
+        }
+        
+        // 排序动作
+        actions.sort(java.util.Comparator.comparingInt(com.oolonghoo.woonpc.action.NpcAction.NpcActionData::order));
+        
+        // 执行动作
         if (Bukkit.isPrimaryThread()) {
             actionManager.executeActions(npc, player, trigger);
         } else {
+            final java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> finalActions = actions;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 actionManager.executeActions(npc, player, trigger);
             });

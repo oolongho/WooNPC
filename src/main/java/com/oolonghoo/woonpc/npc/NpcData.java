@@ -451,6 +451,20 @@ public class NpcData {
         this.dirty = dirty;
     }
     
+    /**
+     * 标记数据为脏（需要保存）
+     */
+    public void markDirty() {
+        this.dirty = true;
+    }
+    
+    /**
+     * 清除脏标记（已保存）
+     */
+    public void clearDirty() {
+        this.dirty = false;
+    }
+    
     // ==================== 序列化 ====================
     
     /**

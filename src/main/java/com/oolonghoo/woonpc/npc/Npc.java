@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -34,6 +35,9 @@ public abstract class Npc {
     
     // 可见性变化监听器
     private final List<VisibilityChangeListener> visibilityChangeListeners = new CopyOnWriteArrayList<>();
+    
+    // 待执行的任务ID集合（用于取消延迟任务）
+    protected final Set<Integer> pendingTasks = ConcurrentHashMap.newKeySet();
     
     // NPC 数据
     protected NpcData data;
@@ -468,5 +472,44 @@ public abstract class Npc {
      */
     public void update() {
         updateForAll();
+    }
+    
+    /**
+     * 注册待执行的任务
+     * 
+     * @param taskId 任务ID
+     */
+    public void registerPendingTask(int taskId) {
+        pendingTasks.add(taskId);
+    }
+    
+    /**
+     * 取消待执行的任务
+     * 
+     * @param taskId 任务ID
+     */
+    public void cancelPendingTask(int taskId) {
+        if (pendingTasks.remove(taskId)) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+    }
+    
+    /**
+     * 取消所有待执行的任务
+     */
+    public void cancelAllPendingTasks() {
+        for (Integer taskId : pendingTasks) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+        pendingTasks.clear();
+    }
+    
+    /**
+     * 获取待执行任务数量
+     * 
+     * @return 待执行任务数量
+     */
+    public int getPendingTaskCount() {
+        return pendingTasks.size();
     }
 }

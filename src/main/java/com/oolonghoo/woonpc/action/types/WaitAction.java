@@ -8,7 +8,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class WaitAction extends NpcAction {
+    
+    private static final AtomicInteger taskIdGenerator = new AtomicInteger(0);
     
     public WaitAction() {
         super("wait", true);
@@ -43,8 +47,22 @@ public class WaitAction extends NpcAction {
         // 标记跳过当前循环的剩余动作（等待后再执行）
         context.skipRemaining();
         
+        Npc npc = context.getNpc();
+        int taskId = taskIdGenerator.incrementAndGet();
+        
+        // 注册任务到 NPC
+        if (npc != null) {
+            npc.registerPendingTask(taskId);
+        }
+        
+        final int registeredTaskId = taskId;
+        
         // 延迟后继续执行后续动作
         Bukkit.getScheduler().runTaskLater(JavaPlugin.getPlugin(WooNPC.class), () -> {
+            // 从待执行列表中移除
+            if (npc != null) {
+                npc.cancelPendingTask(registeredTaskId);
+            }
             continueExecution(context, nextIndex);
         }, ticks);
     }
