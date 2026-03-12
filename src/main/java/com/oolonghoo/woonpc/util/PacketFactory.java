@@ -46,7 +46,7 @@ public final class PacketFactory {
             try {
                 gameProfileIdMethod = GameProfile.class.getMethod("id");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] 无法获取 GameProfile.getId 方法：" + ex.getMessage());
             }
         }
         try {
@@ -55,7 +55,7 @@ public final class PacketFactory {
             try {
                 gameProfileNameMethod = GameProfile.class.getMethod("name");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] 无法获取 GameProfile.getName 方法：" + ex.getMessage());
             }
         }
         try {
@@ -77,7 +77,7 @@ public final class PacketFactory {
                 return (UUID) gameProfileIdMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile ID 失败：" + e.getMessage());
         }
         return null;
     }
@@ -89,7 +89,7 @@ public final class PacketFactory {
                 return (String) gameProfileNameMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile 名称失败：" + e.getMessage());
         }
         return "";
     }
@@ -103,7 +103,7 @@ public final class PacketFactory {
                 return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, propertyMap);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] 创建带皮肤的 GameProfile 失败：" + e.getMessage());
         }
         // 回退到基本构造函数
         return new GameProfile(uuid, name);

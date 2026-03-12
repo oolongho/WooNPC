@@ -659,7 +659,8 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         float scale;
         try {
             scale = Float.parseFloat(args[2]);
-            if (scale < 0.1f || scale > 10.0f) {
+            // 完善边界检查：包括 NaN 和 Infinity
+            if (!Float.isFinite(scale) || scale < 0.1f || scale > 10.0f) {
                 sender.sendMessage(msg.getWithPrefix("scale.invalid-range"));
                 return true;
             }
@@ -985,6 +986,13 @@ public class MainCommand implements CommandExecutor, TabCompleter {
             double z = Double.parseDouble(args[4]);
             float yaw = args.length > 5 ? Float.parseFloat(args[5]) : currentLoc.getYaw();
             float pitch = args.length > 6 ? Float.parseFloat(args[6]) : currentLoc.getPitch();
+            
+            // 完善边界检查：包括 NaN 和 Infinity
+            if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z) ||
+                !Float.isFinite(yaw) || !Float.isFinite(pitch)) {
+                sender.sendMessage(msg.getWithPrefix("invalid-number"));
+                return true;
+            }
 
             Location newLoc = new Location(currentLoc.getWorld(), x, y, z, yaw, pitch);
             npc.getData().setLocation(newLoc);

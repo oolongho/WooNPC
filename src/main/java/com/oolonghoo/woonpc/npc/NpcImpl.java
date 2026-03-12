@@ -848,7 +848,9 @@ public class NpcImpl extends Npc {
         } catch (Exception e) {
             try {
                 npc.setPose(pose);
-            } catch (Exception ignored) {
+            } catch (Exception e2) {
+                // 设置姿势失败，忽略
+                Bukkit.getLogger().fine("[WooNPC] 设置 NPC 姿势失败：" + e2.getMessage());
             }
         }
     }

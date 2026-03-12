@@ -58,7 +58,11 @@ public class DebugManager {
     public void error(String message, Throwable throwable) {
         plugin.getLogger().severe("[DEBUG] " + message);
         if (throwable != null && isEnabled()) {
-            throwable.printStackTrace();
+            plugin.getLogger().severe("异常详情：" + throwable.getMessage());
+            plugin.getLogger().severe("堆栈跟踪：");
+            for (StackTraceElement element : throwable.getStackTrace()) {
+                plugin.getLogger().severe("  at " + element.toString());
+            }
         }
     }
 

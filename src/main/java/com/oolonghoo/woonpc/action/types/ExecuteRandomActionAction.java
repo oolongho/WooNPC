@@ -1,5 +1,6 @@
 package com.oolonghoo.woonpc.action.types;
 
+import com.oolonghoo.woonpc.WooNPC;
 import com.oolonghoo.woonpc.action.ActionExecutionContext;
 import com.oolonghoo.woonpc.action.NpcAction;
 import org.bukkit.entity.Player;
@@ -40,7 +41,9 @@ public class ExecuteRandomActionAction extends NpcAction {
         try {
             randomAction.execute(context.getPlayer());
         } catch (Exception e) {
-            e.printStackTrace();
+            WooNPC.getInstance().getLogger().warning(
+                "[WooNPC] 执行随机动作失败：" + randomAction.action().getName() + " - " + e.getMessage()
+            );
         }
         
         context.skipRemaining();

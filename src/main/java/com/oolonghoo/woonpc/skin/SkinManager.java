@@ -11,6 +11,7 @@ import com.oolonghoo.woonpc.skin.dto.MineToolsUuidResponse;
 import com.oolonghoo.woonpc.skin.dto.MojangSessionResponse;
 import com.oolonghoo.woonpc.skin.dto.MojangUuidResponse;
 import com.oolonghoo.woonpc.util.PlaceholderUtil;
+import com.oolonghoo.woonpc.util.RateLimiter;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -59,6 +60,9 @@ public class SkinManager {
     private final Map<String, UUID> uuidCache = new ConcurrentHashMap<>();
     private final JavaPlugin plugin;
     
+    // 速率限制器：每个 API 每秒最多 2 个请求
+    private final RateLimiter rateLimiter = RateLimiter.create(2, TimeUnit.SECONDS);
+    
     private boolean useSkinsRestorer = true;
     private boolean useMojang = true;
     private boolean useAshcon = true;
@@ -76,7 +80,7 @@ public class SkinManager {
             try {
                 gameProfilePropertiesMethod = com.mojang.authlib.GameProfile.class.getMethod("properties");
             } catch (NoSuchMethodException ex) {
-                ex.printStackTrace();
+                Bukkit.getLogger().warning("[WooNPC] 无法获取 GameProfile.getProperties 方法：" + ex.getMessage());
             }
         }
     }
@@ -88,7 +92,7 @@ public class SkinManager {
                 return (com.mojang.authlib.properties.PropertyMap) gameProfilePropertiesMethod.invoke(profile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile 属性失败：" + e.getMessage());
         }
         return null;
     }
@@ -308,6 +312,18 @@ public class SkinManager {
     
     private CompletableFuture<SkinData> fetchSkinFromAshcon(String playerName, SkinData.SkinVariant variant) {
         return CompletableFuture.supplyAsync(() -> {
+            // 速率限制检查
+            if (!rateLimiter.tryAcquire("ashcon")) {
+                long waitMs = rateLimiter.getRemainingWaitMs("ashcon");
+                plugin.getLogger().fine("Ashcon API 速率限制，等待 " + waitMs + "ms");
+                try {
+                    Thread.sleep(waitMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+            
             try {
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(new URI(ASHCON_API + playerName))
