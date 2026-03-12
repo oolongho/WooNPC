@@ -13,6 +13,7 @@ java {
 }
 
 repositories {
+    maven { url = "https://maven.aliyun.com/repository/public" }
     mavenCentral()
     maven { url = "https://repo.papermc.io/repository/maven-public/" }
     maven { url = "https://repo.extendedclip.com/content/repositories/placeholderapi/" }
