@@ -9,8 +9,10 @@ import com.mojang.datafixers.util.Pair;
 import io.papermc.paper.adventure.PaperAdventure;
 import net.minecraft.Optionull;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -891,7 +893,8 @@ public class NpcImpl extends Npc {
         
         try {
             Holder.Reference<net.minecraft.world.entity.ai.attributes.Attribute> scaleAttribute = 
-                    BuiltInRegistries.ATTRIBUTE.get(Identifier.parse("minecraft:scale")).get();
+                    BuiltInRegistries.ATTRIBUTE.get(ResourceKey.create(net.minecraft.core.registries.Registries.ATTRIBUTE, 
+                            CraftNamespacedKey.toMinecraft(org.bukkit.NamespacedKey.minecraft("scale")))).get();
             
             if (scaleAttribute != null) {
                 net.minecraft.world.entity.ai.attributes.AttributeInstance attributeInstance = 
