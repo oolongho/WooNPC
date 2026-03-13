@@ -55,11 +55,25 @@ public class NpcImpl extends Npc {
     private Display.TextDisplay sittingVehicle;
     
     // 区块可见性缓存 (Player UUID -> Chunk Key -> Boolean)
-    private final Map<UUID, Map<Long, Boolean>> chunkVisibilityCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<Long, Boolean>> chunkVisibilityCache = createLRUCache(500);
     
     // 缓存失效计数器
     private int cacheInvalidationCounter = 0;
     private static final int CACHE_INVALIDATION_INTERVAL = 100; // 每 100 次检查清理一次缓存
+    
+    /**
+     * 创建两级 LRU 缓存（外层 LRU，内层并发）
+     * @param maxSize 最大缓存玩家数量
+     * @return LRU 缓存 Map
+     */
+    private static <K, V> Map<K, Map<Long, V>> createLRUCache(int maxSize) {
+        return new java.util.LinkedHashMap<>(maxSize, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(java.util.Map.Entry<K, Map<Long, V>> eldest) {
+                return size() > maxSize;
+            }
+        };
+    }
     
     private static Method gameProfileNameMethod;
     private static Method gameProfileIdMethod;

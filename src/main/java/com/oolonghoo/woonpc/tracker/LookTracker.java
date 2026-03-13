@@ -151,18 +151,19 @@ public class LookTracker implements Runnable {
                     continue;
                 }
                 
-                // 计算距离
-                double distance = playerLocation.distance(npcLocation);
-                if (Double.isNaN(distance)) {
+                // 计算距离平方（避免开方运算，提升性能）
+                double distanceSquared = playerLocation.distanceSquared(npcLocation);
+                if (Double.isNaN(distanceSquared)) {
                     continue;
                 }
                 
                 // 获取 NPC 特定的转向距离或使用默认值
                 int npcTurnDistance = npcData.getTurnToPlayerDistance();
                 int effectiveTurnDistance = (npcTurnDistance == -1) ? defaultTurnToPlayerDistance : npcTurnDistance;
+                double effectiveTurnDistanceSquared = (double) effectiveTurnDistance * effectiveTurnDistance;
                 
                 // 检查是否启用了转向玩家
-                if (npcData.isTurnToPlayer() && distance < effectiveTurnDistance) {
+                if (npcData.isTurnToPlayer() && distanceSquared < effectiveTurnDistanceSquared) {
                     // 更新 NPC 看向玩家
                     updateNpcLookAtPlayer(npc, player, npcData, npcLocation);
                     

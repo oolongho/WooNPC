@@ -57,7 +57,7 @@ public class SkinManager {
     private final ExecutorService executor;
     private final SkinCacheMemory memCache;
     private final SkinCacheFile fileCache;
-    private final Map<String, UUID> uuidCache = new ConcurrentHashMap<>();
+    private final Map<String, UUID> uuidCache = createLRUCache(1000);
     private final JavaPlugin plugin;
     
     // 速率限制器：每个 API 每秒最多 2 个请求
@@ -95,6 +95,20 @@ public class SkinManager {
             Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile 属性失败：" + e.getMessage());
         }
         return null;
+    }
+    
+    /**
+     * 创建 LRU 缓存（LinkedHashMap 实现）
+     * @param maxSize 最大缓存数量
+     * @return LRU 缓存 Map
+     */
+    private static <K, V> Map<K, V> createLRUCache(int maxSize) {
+        return new java.util.LinkedHashMap<>(maxSize, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(java.util.Map.Entry<K, V> eldest) {
+                return size() > maxSize;
+            }
+        };
     }
     
     public SkinManager(JavaPlugin plugin) {
@@ -181,6 +195,14 @@ public class SkinManager {
         return getSkinAsync(identifier, SkinData.SkinVariant.AUTO);
     }
     
+    /**
+     * 异步获取皮肤数据
+     * 
+     * @param identifier 皮肤标识符（玩家名、UUID 等）
+     * @param variant 皮肤变体（HALF 或 FULL）
+     * @return CompletableFuture 包含皮肤数据，失败时返回 null
+     * @throws IllegalArgumentException 当标识符无效时
+     */
     public CompletableFuture<SkinData> getSkinAsync(String identifier, SkinData.SkinVariant variant) {
         final String finalIdentifier;
         if (identifier != null && !identifier.isBlank()) {
@@ -191,6 +213,14 @@ public class SkinManager {
         return CompletableFuture.supplyAsync(() -> getSkin(finalIdentifier, variant), executor);
     }
     
+    /**
+     * 通过玩家名称异步获取皮肤
+     * 
+     * @param name 玩家名称
+     * @param variant 皮肤变体
+     * @return CompletableFuture 包含皮肤数据
+     * @throws IllegalArgumentException 当玩家名称无效时
+     */
     public CompletableFuture<SkinData> getSkinByName(String name, SkinData.SkinVariant variant) {
         if (name == null || name.isBlank()) {
             return CompletableFuture.completedFuture(null);
@@ -387,6 +417,13 @@ public class SkinManager {
         }, executor);
     }
     
+    /**
+     * 通过 UUID 异步获取皮肤
+     * 
+     * @param uuid 玩家 UUID
+     * @param variant 皮肤变体
+     * @return CompletableFuture 包含皮肤数据
+     */
     public CompletableFuture<SkinData> getSkinByUUID(UUID uuid, SkinData.SkinVariant variant) {
         if (uuid == null) {
             return CompletableFuture.completedFuture(null);
