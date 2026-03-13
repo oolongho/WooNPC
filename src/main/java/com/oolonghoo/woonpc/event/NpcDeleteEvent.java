@@ -7,8 +7,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 删除事件
  * 在 NPC 被删除时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcDeleteEvent extends NpcEvent implements Cancellable {
     

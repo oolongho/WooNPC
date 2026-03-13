@@ -11,8 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 反射工具类
  * 提供缓存机制优化反射性能
- * 
- * @author oolonghoo
+ * o
  */
 public final class ReflectionUtil {
     

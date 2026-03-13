@@ -7,8 +7,7 @@ import java.util.Map;
 /**
  * 简单的速率限制器
  * 用于限制网络请求频率
- * 
- * @author oolonghoo
+ * o
  */
 public class RateLimiter {
     

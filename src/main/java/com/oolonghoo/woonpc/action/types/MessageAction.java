@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
  * 消息动作
  * 向玩家发送消息
  * 
- * @author oolongho
  */
 public class MessageAction extends NpcAction {
     

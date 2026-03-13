@@ -7,8 +7,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 事件基类
  * 所有 NPC 相关事件的父类
- * 
- * @author oolonghoo
+ * o
  */
 public abstract class NpcEvent extends Event {
     

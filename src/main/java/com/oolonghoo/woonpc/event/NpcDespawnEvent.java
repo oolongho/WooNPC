@@ -7,8 +7,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 消失事件
  * 在 NPC 对玩家不可见时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcDespawnEvent extends NpcEvent {
     

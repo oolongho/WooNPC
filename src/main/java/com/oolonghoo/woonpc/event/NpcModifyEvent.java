@@ -6,8 +6,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 属性修改事件
  * 在 NPC 属性被修改时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcModifyEvent extends NpcEvent {
     

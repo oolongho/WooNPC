@@ -13,7 +13,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
  * 玩家退出监听器
  * 当玩家退出服务器时，清理相关数据
  * 
- * @author oolongho
  */
 public class PlayerQuitListener implements Listener {
 

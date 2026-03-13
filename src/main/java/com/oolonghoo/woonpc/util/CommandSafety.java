@@ -5,8 +5,7 @@ import org.bukkit.Bukkit;
 /**
  * 命令安全工具类（轻量级）
  * 只进行基础的命令注入防护
- * 
- * @author oolonghoo
+ * o
  */
 public final class CommandSafety {
     

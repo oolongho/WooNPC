@@ -12,7 +12,6 @@ import java.util.regex.Pattern;
  * 颜色代码处理工具类
  * 支持 §、& 和 MiniMessage 格式
  * 
- * @author oolongho
  */
 public final class ColorUtil {
     

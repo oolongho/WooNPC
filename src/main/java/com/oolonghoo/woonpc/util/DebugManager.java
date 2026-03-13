@@ -7,7 +7,6 @@ import com.oolonghoo.woonpc.config.ConfigLoader;
  * 调试管理器
  * 用于输出调试信息
  * 
- * @author oolongho
  */
 public class DebugManager {
 

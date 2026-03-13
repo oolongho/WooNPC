@@ -4,7 +4,6 @@ package com.oolonghoo.woonpc.npc;
  * NPC 装备槽位枚举
  * 对应 Minecraft 的装备槽位
  * 
- * @author oolongho
  */
 public enum NpcEquipmentSlot {
     

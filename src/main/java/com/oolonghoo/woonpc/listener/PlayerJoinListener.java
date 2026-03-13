@@ -12,7 +12,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
  * 玩家加入监听器
  * 当玩家加入服务器时，为其生成可见范围内的 NPC
  * 
- * @author oolongho
  */
 public class PlayerJoinListener implements Listener {
 

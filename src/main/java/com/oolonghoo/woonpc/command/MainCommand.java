@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
  * 主命令处理器
  * 处理 /npc 命令及其子命令
  * 
- * @author oolongho
  */
 public class MainCommand implements CommandExecutor, TabCompleter {
 

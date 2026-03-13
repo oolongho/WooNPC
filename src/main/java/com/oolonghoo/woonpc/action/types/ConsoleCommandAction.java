@@ -12,8 +12,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 控制台命令动作
  * 以控制台身份执行命令（带安全检查）
- * 
- * @author oolonghoo
+ * o
  */
 public class ConsoleCommandAction extends NpcAction {
     

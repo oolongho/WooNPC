@@ -33,7 +33,6 @@ import java.util.Collection;
 /**
  * WooNPC - 轻量级高性能 NPC 插件
  * 
- * @author oolongho
  */
 public class WooNPC extends JavaPlugin {
     

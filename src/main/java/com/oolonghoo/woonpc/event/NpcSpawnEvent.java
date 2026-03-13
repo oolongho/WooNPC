@@ -7,8 +7,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 生成事件
  * 在 NPC 对玩家可见时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcSpawnEvent extends NpcEvent {
     

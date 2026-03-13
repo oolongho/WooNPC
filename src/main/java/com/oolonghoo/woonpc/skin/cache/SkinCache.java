@@ -6,7 +6,6 @@ import com.oolonghoo.woonpc.skin.SkinData;
  * 皮肤缓存接口
  * 定义皮肤缓存的基本操作
  * 
- * @author oolongho
  */
 public interface SkinCache {
     

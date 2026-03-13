@@ -17,7 +17,6 @@ import java.util.List;
  * NPC 抽象基类
  * 定义 NPC 的核心行为接口
  * 
- * @author oolongho
  */
 public abstract class Npc {
     

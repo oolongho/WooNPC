@@ -8,8 +8,7 @@ import org.bukkit.event.HandlerList;
 /**
  * NPC 创建事件
  * 在 NPC 被创建时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcCreateEvent extends NpcEvent implements Cancellable {
     

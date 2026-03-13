@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * NPC 动作管理器
  * 管理所有注册的动作类型和 NPC 的动作执行
  * 
- * @author oolongho
  */
 public class ActionManager {
     

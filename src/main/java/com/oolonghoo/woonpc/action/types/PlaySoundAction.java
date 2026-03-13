@@ -15,7 +15,6 @@ import java.util.Locale;
  * 播放声音动作
  * 向玩家播放音效
  * 
- * @author oolongho
  */
 public class PlaySoundAction extends NpcAction {
     

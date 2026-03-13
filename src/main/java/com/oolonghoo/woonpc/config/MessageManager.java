@@ -16,7 +16,6 @@ import java.util.Map;
  * 消息管理器
  * 负责加载和管理语言文件
  * 
- * @author oolongho
  */
 public class MessageManager {
 

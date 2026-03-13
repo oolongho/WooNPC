@@ -12,8 +12,7 @@ import java.util.List;
 /**
  * NPC 交互事件
  * 在玩家与 NPC 交互时触发
- * 
- * @author oolonghoo
+ * o
  */
 public class NpcInteractEvent extends NpcEvent implements Cancellable {
     

@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * NPC管理器
  * 负责NPC的创建、删除、查询和持久化
  * 
- * @author oolongho
  */
 public class NpcManager {
 

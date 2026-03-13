@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 内存皮肤缓存实现
  * 使用 ConcurrentHashMap 实现线程安全的内存缓存
  * 
- * @author oolongho
  */
 public class SkinCacheMemory implements SkinCache {
     

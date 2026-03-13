@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
  * NPC 发光颜色枚举
  * 对应 Minecraft Team 的颜色
  * 
- * @author oolongho
  */
 public enum GlowingColor {
     

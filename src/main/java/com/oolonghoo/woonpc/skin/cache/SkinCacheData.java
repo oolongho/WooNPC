@@ -8,7 +8,6 @@ import java.util.Objects;
  * 皮肤缓存数据包装类
  * 包含皮肤数据和缓存元信息
  * 
- * @author oolongho
  */
 public class SkinCacheData {
     

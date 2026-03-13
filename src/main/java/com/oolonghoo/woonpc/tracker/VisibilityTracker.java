@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * - 缓存玩家位置，减少 getLocation() 调用
  * - 批量处理可见性更新
  * 
- * @author oolongho
  */
 public class VisibilityTracker implements Runnable {
 

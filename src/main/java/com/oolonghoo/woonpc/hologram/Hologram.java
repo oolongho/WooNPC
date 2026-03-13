@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 全息文字系统
  * 使用 Marker Armor Stand 实现多行全息文字
  * 
- * @author oolongho
  */
 public class Hologram {
 

@@ -6,7 +6,6 @@ import java.util.Objects;
  * 皮肤数据类
  * 存储 NPC 皮肤的纹理值和签名信息
  * 
- * @author oolongho
  */
 public class SkinData {
     

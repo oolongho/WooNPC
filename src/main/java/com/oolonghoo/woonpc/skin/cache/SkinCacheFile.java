@@ -19,7 +19,6 @@ import java.util.logging.Level;
  * 文件皮肤缓存实现
  * 使用 JSON 文件持久化皮肤缓存
  * 
- * @author oolongho
  */
 public class SkinCacheFile implements SkinCache {
     

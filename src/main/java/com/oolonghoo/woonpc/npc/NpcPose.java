@@ -4,7 +4,6 @@ package com.oolonghoo.woonpc.npc;
  * NPC 姿势枚举
  * 定义 NPC 可以采用的不同姿势
  * 
- * @author oolongho
  */
 public enum NpcPose {
     

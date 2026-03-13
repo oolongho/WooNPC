@@ -12,8 +12,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 玩家命令动作
  * 以玩家身份执行命令（带安全检查）
- * 
- * @author oolonghoo
+ * o
  */
 public class PlayerCommandAction extends NpcAction {
     

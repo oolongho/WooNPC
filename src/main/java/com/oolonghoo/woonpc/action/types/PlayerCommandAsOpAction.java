@@ -9,8 +9,7 @@ import org.bukkit.entity.Player;
 /**
  * 以 OP 权限执行玩家命令
  * 注意：此动作需要管理员谨慎配置
- * 
- * @author oolonghoo
+ * o
  */
 public class PlayerCommandAsOpAction extends NpcAction {
     

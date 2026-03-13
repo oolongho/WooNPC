@@ -4,7 +4,6 @@ package com.oolonghoo.woonpc.action;
  * NPC 动作触发器枚举
  * 定义触发 NPC 动作的方式
  * 
- * @author oolongho
  */
 public enum ActionTrigger {
     

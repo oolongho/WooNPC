@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
  * NPC 数据模型
  * 存储 NPC 的所有属性信息
  * 
- * @author oolongho
  */
 public class NpcData {
     
