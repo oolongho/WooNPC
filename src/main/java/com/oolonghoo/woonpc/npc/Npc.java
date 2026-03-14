@@ -461,7 +461,7 @@ public abstract class Npc {
             try {
                 listener.onVisibilityChange(this, player, visible, visibleCount);
             } catch (Exception e) {
-                Bukkit.getLogger().warning("[WooNPC] 可见性监听器执行异常: " + e.getMessage());
+                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] 可见性监听器执行异常: {0}", e.getMessage());
             }
         }
     }

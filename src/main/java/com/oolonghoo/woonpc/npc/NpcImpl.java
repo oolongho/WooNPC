@@ -98,7 +98,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfileNameMethod = GameProfile.class.getMethod("name");
             } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getName method: " + ex.getMessage());
+                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getName method: {0}", ex.getMessage());
             }
         }
         try {
@@ -107,7 +107,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfileIdMethod = GameProfile.class.getMethod("id");
             } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getId method: " + ex.getMessage());
+                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getId method: {0}", ex.getMessage());
             }
         }
         try {
@@ -116,7 +116,7 @@ public class NpcImpl extends Npc {
             try {
                 gameProfilePropertiesMethod = GameProfile.class.getMethod("properties");
             } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().warning("[WooNPC] Failed to get GameProfile.getProperties method: " + ex.getMessage());
+                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getProperties method: {0}", ex.getMessage());
             }
         }
         try {
@@ -135,7 +135,7 @@ public class NpcImpl extends Npc {
             try {
                 serverPlayerLevelMethod = ServerPlayer.class.getMethod("level");
             } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().warning("[WooNPC] Failed to get ServerPlayer.level method: " + ex.getMessage());
+                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get ServerPlayer.level method: {0}", ex.getMessage());
             }
         }
         try {
@@ -161,67 +161,67 @@ public class NpcImpl extends Npc {
             if (gameProfileNameMethod != null) {
                 return (String) gameProfileNameMethod.invoke(profile);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to get profile name: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile name: {0}", e.getMessage());
         }
         return "";
     }
-    
+
     private static UUID getProfileId(GameProfile profile) {
         if (profile == null) return null;
         try {
             if (gameProfileIdMethod != null) {
                 return (UUID) gameProfileIdMethod.invoke(profile);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to get profile id: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile id: {0}", e.getMessage());
         }
         return null;
     }
-    
+
     private static PropertyMap getProfileProperties(GameProfile profile) {
         if (profile == null) return createEmptyPropertyMap();
         try {
             if (gameProfilePropertiesMethod != null) {
                 return (PropertyMap) gameProfilePropertiesMethod.invoke(profile);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to get profile properties: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile properties: {0}", e.getMessage());
         }
         return createEmptyPropertyMap();
     }
-    
+
     private static ServerLevel getServerLevel(ServerPlayer player) {
         if (player == null) return null;
         try {
             if (serverPlayerLevelMethod != null) {
                 return (ServerLevel) serverPlayerLevelMethod.invoke(player);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to get server level: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get server level: {0}", e.getMessage());
         }
         return null;
     }
-    
+
     private static GameProfile createGameProfileWithProperties(UUID uuid, String name, PropertyMap properties) {
         try {
             if (gameProfileConstructorWithProps != null) {
                 return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, properties);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to create GameProfile with properties: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to create GameProfile with properties: {0}", e.getMessage());
         }
         // 无法创建带属性的 GameProfile，返回基本的 GameProfile
         return new GameProfile(uuid, name, properties);
     }
-    
+
     private static PropertyMap createEmptyPropertyMap() {
         try {
             if (propertyMapConstructor != null) {
                 return (PropertyMap) propertyMapConstructor.newInstance(ImmutableMultimap.of());
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to create empty PropertyMap: " + e.getMessage());
+        } catch (ReflectiveOperationException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to create empty PropertyMap: {0}", e.getMessage());
         }
         return null;
     }
@@ -239,12 +239,13 @@ public class NpcImpl extends Npc {
      * 可见性变化回调
      * 当有玩家变为可见时添加到 tickable 索引，当无可见玩家时从索引移除
      */
-    private void onVisibilityChange(Npc npc, Player player, boolean visible, int visiblePlayerCount) {
+    @SuppressWarnings("java:S1172") // 参数由接口契约要求，部分参数未使用是预期行为
+    private void onVisibilityChange(Npc _npc, Player _player, boolean visible, int visiblePlayerCount) {
         WooNPC plugin = WooNPC.getInstance();
         if (plugin == null) return;
-        
+
         UUID npcId = UUID.fromString(data.getId());
-        
+
         if (visible) {
             // 有玩家变为可见，添加到 tickable 索引
             plugin.getNpcManager().addToTickableIndex(npcId);
@@ -309,11 +310,11 @@ public class NpcImpl extends Npc {
             Field factoryField = EntityType.class.getDeclaredField("factory");
             factoryField.setAccessible(true);
             return (EntityType.EntityFactory<?>) factoryField.get(entityType);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             return null;
         }
     }
-    
+
     private void applySkin(ServerPlayer npcPlayer, String value, String signature) {
         try {
             if (value == null || value.isEmpty()) {
@@ -336,7 +337,7 @@ public class NpcImpl extends Npc {
                 npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
             }
         } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] 设置皮肤失败: " + e.getMessage());
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] 设置皮肤失败: {0}", e.getMessage());
         }
     }
     
@@ -406,8 +407,12 @@ public class NpcImpl extends Npc {
         isVisibleForPlayer.put(player.getUniqueId(), true);
         
         if (!data.isShowInTab() && npc instanceof ServerPlayer) {
+            org.bukkit.plugin.Plugin plugin = java.util.Objects.requireNonNull(
+                    Bukkit.getPluginManager().getPlugin("WooNPC"), 
+                    "WooNPC plugin instance cannot be null"
+            );
             Bukkit.getScheduler().runTaskLater(
-                    Bukkit.getPluginManager().getPlugin("WooNPC"),
+                    plugin,
                     () -> {
                         ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 
                                 new ClientboundPlayerInfoRemovePacket(List.of(npc.getUUID()));
@@ -652,7 +657,7 @@ public class NpcImpl extends Npc {
             Field itemsByIdField = SynchedEntityData.class.getDeclaredField("itemsById");
             itemsByIdField.setAccessible(true);
             return (SynchedEntityData.DataItem<?>[]) itemsByIdField.get(synchedEntityData);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             return new SynchedEntityData.DataItem<?>[0];
         }
     }
@@ -724,11 +729,11 @@ public class NpcImpl extends Npc {
                     -1,
                     Optionull.map(npcPlayer.getChatSession(), RemoteChatSession::asData)
             );
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return createPlayerInfoEntryFallback(npcPlayer, profile);
         }
     }
-    
+
     private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntryFallback(ServerPlayer npcPlayer, GameProfile profile) {
         try {
             if (playerInfoEntryConstructor != null) {
@@ -751,7 +756,8 @@ public class NpcImpl extends Npc {
                 }
                 return (ClientboundPlayerInfoUpdatePacket.Entry) playerInfoEntryConstructor.newInstance(args);
             }
-        } catch (Exception ex) {
+        } catch (ReflectiveOperationException ex) {
+            // 忽略反射异常
         }
         return null;
     }
@@ -859,14 +865,13 @@ public class NpcImpl extends Npc {
                 EntityDataAccessor<Pose> accessor = (EntityDataAccessor<Pose>) dataPoseField.get(null);
                 DATA_POSE_ACCESSOR = accessor;
             }
-            
+
             npc.getEntityData().set(DATA_POSE_ACCESSOR, pose);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             try {
                 npc.setPose(pose);
-            } catch (Exception e2) {
+            } catch (RuntimeException ignored) {
                 // 设置姿势失败，忽略
-                Bukkit.getLogger().fine("[WooNPC] 设置 NPC 姿势失败：" + e2.getMessage());
             }
         }
     }
@@ -929,31 +934,23 @@ public class NpcImpl extends Npc {
                     }
                 }
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to apply scale: " + e.getMessage());
+        } catch (RuntimeException e) {
+            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to apply scale: {0}", e.getMessage());
         }
     }
-    
+
     private void applyEffects() {
         Set<NpcEffect> effects = data.getEffects();
         if (effects.isEmpty()) {
             return;
         }
-        
+
         for (NpcEffect effect : effects) {
             switch (effect) {
-                case ON_FIRE:
-                    npc.setSharedFlagOnFire(true);
-                    break;
-                case INVISIBLE:
-                    npc.setInvisible(true);
-                    break;
-                case SHAKING:
-                    npc.setTicksFrozen(npc.getTicksRequiredToFreeze());
-                    break;
-                case SILENT:
-                    npc.setSilent(true);
-                    break;
+                case ON_FIRE -> npc.setSharedFlagOnFire(true);
+                case INVISIBLE -> npc.setInvisible(true);
+                case SHAKING -> npc.setTicksFrozen(npc.getTicksRequiredToFreeze());
+                case SILENT -> npc.setSilent(true);
             }
         }
     }
@@ -961,8 +958,12 @@ public class NpcImpl extends Npc {
     private void runOnPlayerScheduler(Player player, Runnable task) {
         try {
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            player.getScheduler().run(
+            org.bukkit.plugin.Plugin plugin = java.util.Objects.requireNonNull(
                     Bukkit.getPluginManager().getPlugin("WooNPC"),
+                    "WooNPC plugin instance cannot be null"
+            );
+            player.getScheduler().run(
+                    plugin,
                     (t) -> task.run(),
                     null
             );
@@ -991,12 +992,8 @@ public class NpcImpl extends Npc {
         
         int chunkX = ((int) data.getLocation().getX()) >> 4;
         int chunkZ = ((int) data.getLocation().getZ()) >> 4;
-        
-        if (!isChunkVisible(player, chunkX, chunkZ)) {
-            return false;
-        }
-        
-        return true;
+
+        return isChunkVisible(player, chunkX, chunkZ);
     }
     
     protected boolean isChunkVisible(Player player, int chunkX, int chunkZ) {
@@ -1013,38 +1010,38 @@ public class NpcImpl extends Npc {
         try {
             ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
             return isChunkSentToClient(serverPlayer, chunkX, chunkZ);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return true;
         }
     }
-    
+
     private boolean isChunkSentToClient(ServerPlayer serverPlayer, int chunkX, int chunkZ) {
         try {
             long chunkKey = chunkX & 0xFFFFFFFFL | ((long) chunkZ & 0xFFFFFFFFL) << 32;
-            
+
             UUID playerId = serverPlayer.getUUID();
             Map<Long, Boolean> playerCache = chunkVisibilityCache.get(playerId);
-            
+
             if (playerCache != null) {
                 Boolean cached = playerCache.get(chunkKey);
                 if (cached != null) {
                     return cached;
                 }
             }
-            
+
             boolean isVisible = checkChunkSentNMS(serverPlayer, chunkX, chunkZ);
-            
+
             chunkVisibilityCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>())
                     .put(chunkKey, isVisible);
-            
+
             cacheInvalidationCounter++;
             if (cacheInvalidationCounter >= CACHE_INVALIDATION_INTERVAL) {
                 cacheInvalidationCounter = 0;
                 invalidateChunkCache(playerId);
             }
-            
+
             return isVisible;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return true;
         }
     }
@@ -1055,17 +1052,17 @@ public class NpcImpl extends Npc {
             if (serverLevel == null) {
                 return true;
             }
-            
+
             java.lang.reflect.Method getChunkProviderMethod = net.minecraft.server.level.ServerLevel.class.getMethod("getChunkProvider");
             Object chunkProvider = getChunkProviderMethod.invoke(serverLevel);
-            
+
             if (chunkProvider == null) {
                 return true;
             }
-            
+
             Class<?> chunkProviderClass = chunkProvider.getClass();
             java.lang.reflect.Field chunkMapField = null;
-            
+
             try {
                 chunkMapField = chunkProviderClass.getDeclaredField("chunkMap");
             } catch (NoSuchFieldException e) {
@@ -1076,21 +1073,21 @@ public class NpcImpl extends Npc {
                     }
                 }
             }
-            
+
             if (chunkMapField == null) {
                 return true;
             }
-            
+
             chunkMapField.setAccessible(true);
             Object chunkMap = chunkMapField.get(chunkProvider);
-            
+
             if (chunkMap == null) {
                 return true;
             }
-            
+
             Class<?> chunkMapClass = chunkMap.getClass();
             java.lang.reflect.Method getPlayersMethod = null;
-            
+
             try {
                 getPlayersMethod = chunkMapClass.getMethod("getPlayers", int.class, int.class, boolean.class);
             } catch (NoSuchMethodException e) {
@@ -1101,19 +1098,19 @@ public class NpcImpl extends Npc {
                     }
                 }
             }
-            
+
             if (getPlayersMethod == null) {
                 return true;
             }
-            
+
             Object players = getPlayersMethod.invoke(chunkMap, chunkX, chunkZ, false);
-            
+
             if (players instanceof java.util.List<?> playerList) {
                 return playerList.contains(serverPlayer);
             }
-            
+
             return true;
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             return true;
         }
     }

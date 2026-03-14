@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
  * 只进行基础的命令注入防护
  * o
  */
+@SuppressWarnings("java:S3457")
 public final class CommandSafety {
     
     private CommandSafety() {

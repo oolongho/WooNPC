@@ -117,7 +117,7 @@ public class WaitAction extends NpcAction {
                     context.setJumpToIndex(-1);
                 }
             } catch (Exception e) {
-                WooNPC.getInstance().getLogger().warning(
+                WooNPC.getInstance().getLogger().warning(() ->
                     "Error executing delayed action " + actionData.action().getName() + ": " + e.getMessage()
                 );
             }

@@ -30,6 +30,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
 
+@SuppressWarnings({"java:S3457", "java:S1444"})
 public final class PacketFactory {
 
     private PacketFactory() {
@@ -77,7 +78,7 @@ public final class PacketFactory {
             if (gameProfileIdMethod != null) {
                 return (UUID) gameProfileIdMethod.invoke(profile);
             }
-        } catch (Exception e) {
+        } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
             Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile ID 失败：" + e.getMessage());
         }
         return null;
@@ -89,7 +90,7 @@ public final class PacketFactory {
             if (gameProfileNameMethod != null) {
                 return (String) gameProfileNameMethod.invoke(profile);
             }
-        } catch (Exception e) {
+        } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
             Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile 名称失败：" + e.getMessage());
         }
         return "";
@@ -103,7 +104,7 @@ public final class PacketFactory {
                 );
                 return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, propertyMap);
             }
-        } catch (Exception e) {
+        } catch (InstantiationException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
             Bukkit.getLogger().warning("[WooNPC] 创建带皮肤的 GameProfile 失败：" + e.getMessage());
         }
         // 回退到基本构造函数

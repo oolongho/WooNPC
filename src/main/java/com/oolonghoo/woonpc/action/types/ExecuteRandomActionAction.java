@@ -41,7 +41,7 @@ public class ExecuteRandomActionAction extends NpcAction {
         try {
             randomAction.execute(context.getPlayer());
         } catch (Exception e) {
-            WooNPC.getInstance().getLogger().warning(
+            WooNPC.getInstance().getLogger().warning(() ->
                 "[WooNPC] 执行随机动作失败：" + randomAction.action().getName() + " - " + e.getMessage()
             );
         }

@@ -18,8 +18,6 @@ import com.oolonghoo.woonpc.listener.PlayerJoinListener;
 import com.oolonghoo.woonpc.listener.PlayerQuitListener;
 import com.oolonghoo.woonpc.manager.NpcManager;
 import com.oolonghoo.woonpc.npc.Npc;
-import com.oolonghoo.woonpc.npc.NpcData;
-import com.oolonghoo.woonpc.npc.NpcImpl;
 import com.oolonghoo.woonpc.skin.SkinManager;
 import com.oolonghoo.woonpc.tracker.LookTracker;
 import com.oolonghoo.woonpc.tracker.VisibilityTracker;
@@ -113,7 +111,7 @@ public class WooNPC extends JavaPlugin {
         
         // 加载NPC数据
         npcManager.loadNpcs();
-        getLogger().info("已加载 " + npcManager.getAllNpcs().size() + " 个 NPC");
+        getLogger().info(() -> "已加载 " + npcManager.getAllNpcs().size() + " 个 NPC");
         
         // 为所有玩家生成NPC
         for (Npc npc : npcManager.getAllNpcs()) {
@@ -130,10 +128,10 @@ public class WooNPC extends JavaPlugin {
         
         // 功能模块
         if (hologramHook.getActivePlugin() != HologramHook.HologramPlugin.NONE) {
-            getLogger().info("[" + hologramHook.getActivePlugin().name() + "] 全息图集成已启用");
+            getLogger().info(() -> "[" + hologramHook.getActivePlugin().name() + "] 全息图集成已启用");
         }
         
-        getLogger().info("WooNPC v" + getPluginMeta().getVersion() + " 已启用!");
+        getLogger().info(() -> "WooNPC v" + getPluginMeta().getVersion() + " 已启用!");
     }
     
     @Override
@@ -160,7 +158,7 @@ public class WooNPC extends JavaPlugin {
             hologramHook.shutdown();
         }
         
-        getLogger().info("已移除 " + count + " 个 NPC");
+        getLogger().info(() -> "已移除 " + count + " 个 NPC");
         getLogger().info("WooNPC 已禁用!");
     }
     
@@ -225,13 +223,18 @@ public class WooNPC extends JavaPlugin {
         // 最小 20 ticks (1秒)，最大 6000 ticks (5分钟)
         final int MIN_INTERVAL = 20;
         final int MAX_INTERVAL = 6000;
+        @SuppressWarnings("java:S3457")
+        int adjustedInterval = interval;
         if (interval < MIN_INTERVAL) {
             getLogger().warning("占位符刷新间隔 " + interval + " ticks 过小，已调整为最小值 " + MIN_INTERVAL + " ticks");
-            interval = MIN_INTERVAL;
+            adjustedInterval = MIN_INTERVAL;
         } else if (interval > MAX_INTERVAL) {
             getLogger().warning("占位符刷新间隔 " + interval + " ticks 过大，已调整为最大值 " + MAX_INTERVAL + " ticks");
-            interval = MAX_INTERVAL;
+            adjustedInterval = MAX_INTERVAL;
         }
+        interval = adjustedInterval;
+        
+        final int finalInterval = interval;
         
         // 使用同步任务，因为 npc.updateForAll() 需要在主线程执行
         placeholderRefreshTaskId = Bukkit.getScheduler().runTaskTimer(this, () -> {
@@ -241,9 +244,11 @@ public class WooNPC extends JavaPlugin {
                     npc.updateForAll();
                 }
             }
-        }, interval, interval).getTaskId();
+        }, finalInterval, finalInterval).getTaskId();
         
-        getLogger().info("已启动占位符刷新任务，间隔: " + interval + " ticks");
+        @SuppressWarnings("java:S3457")
+        String logMsg = "已启动占位符刷新任务，间隔: " + finalInterval + " ticks";
+        getLogger().info(logMsg);
     }
     
     private void stopPlaceholderRefreshTask() {

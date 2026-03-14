@@ -27,12 +27,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+import java.lang.reflect.InvocationTargetException;
 
 public class SkinManager {
     
@@ -80,7 +80,7 @@ public class SkinManager {
             try {
                 gameProfilePropertiesMethod = com.mojang.authlib.GameProfile.class.getMethod("properties");
             } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().warning("[WooNPC] 无法获取 GameProfile.getProperties 方法：" + ex.getMessage());
+                Bukkit.getLogger().warning(() -> "[WooNPC] 无法获取 GameProfile.getProperties 方法：" + ex.getMessage());
             }
         }
     }
@@ -91,8 +91,8 @@ public class SkinManager {
             if (gameProfilePropertiesMethod != null) {
                 return (com.mojang.authlib.properties.PropertyMap) gameProfilePropertiesMethod.invoke(profile);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] 获取 GameProfile 属性失败：" + e.getMessage());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            Bukkit.getLogger().warning(() -> "[WooNPC] 获取 GameProfile 属性失败：" + e.getMessage());
         }
         return null;
     }
@@ -151,8 +151,8 @@ public class SkinManager {
             }
         } catch (ClassNotFoundException e) {
             plugin.getLogger().warning("SkinsRestorer API 类未找到，可能版本不兼容");
-        } catch (Exception e) {
-            plugin.getLogger().warning("Hook SkinsRestorer 失败: " + e.getMessage());
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            plugin.getLogger().warning(() -> "Hook SkinsRestorer 失败: " + e.getMessage());
         }
     }
     
@@ -318,13 +318,13 @@ public class SkinManager {
                     String signature = (String) getSignatureMethod.invoke(skinProperty);
                     
                     if (value != null && !value.isEmpty()) {
-                        plugin.getLogger().info("从 SkinsRestorer 获取玩家 " + playerName + " 的皮肤成功");
+                        plugin.getLogger().info(() -> "从 SkinsRestorer 获取玩家 " + playerName + " 的皮肤成功");
                         return new SkinData(playerName, SkinData.SkinVariant.AUTO, value, signature);
                     }
                 }
             }
-        } catch (Exception e) {
-            plugin.getLogger().warning("从 SkinsRestorer 获取皮肤失败: " + e.getMessage());
+        } catch (ClassNotFoundException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            plugin.getLogger().warning(() -> "从 SkinsRestorer 获取皮肤失败: " + e.getMessage());
         }
         
         return null;
@@ -345,7 +345,7 @@ public class SkinManager {
             // 速率限制检查
             if (!rateLimiter.tryAcquire("ashcon")) {
                 long waitMs = rateLimiter.getRemainingWaitMs("ashcon");
-                plugin.getLogger().fine("Ashcon API 速率限制，等待 " + waitMs + "ms");
+                plugin.getLogger().fine(() -> "Ashcon API 速率限制，等待 " + waitMs + "ms");
                 try {
                     Thread.sleep(waitMs);
                 } catch (InterruptedException e) {
@@ -365,14 +365,14 @@ public class SkinManager {
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    plugin.getLogger().warning("Ashcon API 失败 (玩家: " + playerName + ", 状态码: " + response.statusCode() + ")");
+                    plugin.getLogger().warning(() -> "Ashcon API 失败 (玩家: " + playerName + ", 状态码: " + response.statusCode() + ")");
                     return null;
                 }
                 
                 return parseAshconResponse(playerName, variant, response.body());
                 
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Ashcon API 失败 (玩家: " + playerName + ")", e);
+            } catch (java.net.URISyntaxException | java.io.IOException | InterruptedException e) {
+                plugin.getLogger().log(Level.WARNING, "Ashcon API 失败 (玩家: %s)".formatted(playerName), e);
                 return null;
             }
         }, executor);
@@ -410,8 +410,8 @@ public class SkinManager {
                 
                 return parseMineToolsSkinResponse(playerName, variant, skinResponse.body());
                 
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "MineTools API 失败 (玩家: " + playerName + ")", e);
+            } catch (java.net.URISyntaxException | java.io.IOException | InterruptedException e) {
+                plugin.getLogger().log(Level.WARNING, "MineTools API 失败 (玩家: %s)".formatted(playerName), e);
                 return null;
             }
         }, executor);
@@ -462,8 +462,8 @@ public class SkinManager {
                 
                 return parseUuidResponse(response.body());
                 
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Mojang UUID API 失败 (玩家名: " + name + ")", e);
+            } catch (java.net.URISyntaxException | java.io.IOException | InterruptedException e) {
+                plugin.getLogger().log(Level.WARNING, "Mojang UUID API 失败 (玩家名: %s)".formatted(name), e);
                 return null;
             }
         }, executor);
@@ -484,14 +484,14 @@ public class SkinManager {
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    plugin.getLogger().warning("Mojang Session API 失败 (UUID: " + uuid + ", 状态码: " + response.statusCode() + ")");
+                    plugin.getLogger().warning(() -> "Mojang Session API 失败 (UUID: " + uuid + ", 状态码: " + response.statusCode() + ")");
                     return null;
                 }
                 
                 return parseSkinResponse(uuid.toString(), variant, response.body());
                 
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Mojang Session API 失败 (UUID: " + uuid + ")", e);
+            } catch (java.net.URISyntaxException | java.io.IOException | InterruptedException e) {
+                plugin.getLogger().log(Level.WARNING, "Mojang Session API 失败 (UUID: %s)".formatted(uuid), e);
                 return null;
             }
         }, executor);
@@ -603,12 +603,12 @@ public class SkinManager {
         try {
             MojangUuidResponse response = gson.fromJson(json, MojangUuidResponse.class);
             if (response == null || response.getId() == null) {
-                plugin.getLogger().warning("Mojang UUID API 响应格式异常: " + json);
+                plugin.getLogger().warning(() -> "Mojang UUID API 响应格式异常: " + json);
                 return null;
             }
             return parseUUID(response.getId());
         } catch (JsonSyntaxException e) {
-            plugin.getLogger().log(Level.WARNING, "解析 Mojang UUID 响应失败: " + json, e);
+            plugin.getLogger().log(Level.WARNING, "解析 Mojang UUID 响应失败: %s".formatted(json), e);
             return null;
         }
     }
@@ -621,7 +621,7 @@ public class SkinManager {
         try {
             MojangSessionResponse response = gson.fromJson(json, MojangSessionResponse.class);
             if (response == null || response.getProperties() == null || response.getProperties().isEmpty()) {
-                plugin.getLogger().warning("Mojang Session API 响应格式异常: " + json);
+                plugin.getLogger().warning(() -> "Mojang Session API 响应格式异常: " + json);
                 return null;
             }
             
@@ -629,7 +629,7 @@ public class SkinManager {
                 if ("textures".equals(property.getName())) {
                     if (property.getValue() == null || property.getValue().isEmpty() ||
                         property.getSignature() == null || property.getSignature().isEmpty()) {
-                        plugin.getLogger().warning("Mojang Session API 响应中 textures 属性值无效: " + json);
+                        plugin.getLogger().warning(() -> "Mojang Session API 响应中 textures 属性值无效: " + json);
                         return null;
                     }
                     SkinData skinData = new SkinData(identifier, variant, property.getValue(), property.getSignature());
@@ -639,10 +639,10 @@ public class SkinManager {
                 }
             }
             
-            plugin.getLogger().warning("Mojang Session API 响应中未找到 textures 属性: " + json);
+            plugin.getLogger().warning(() -> "Mojang Session API 响应中未找到 textures 属性: " + json);
             return null;
         } catch (JsonSyntaxException e) {
-            plugin.getLogger().log(Level.WARNING, "解析 Mojang Session 响应失败: " + json, e);
+            plugin.getLogger().log(Level.WARNING, "解析 Mojang Session 响应失败: %s".formatted(json), e);
             return null;
         }
     }
@@ -655,21 +655,21 @@ public class SkinManager {
         try {
             AshconResponse response = gson.fromJson(json, AshconResponse.class);
             if (response == null || response.getTextures() == null || response.getTextures().getRaw() == null) {
-                plugin.getLogger().warning("Ashcon API 响应格式异常: " + json);
+                plugin.getLogger().warning(() -> "Ashcon API 响应格式异常: " + json);
                 return null;
             }
             
             AshconResponse.RawTexture raw = response.getTextures().getRaw();
             if (raw.getValue() == null || raw.getValue().isEmpty() ||
                 raw.getSignature() == null || raw.getSignature().isEmpty()) {
-                plugin.getLogger().warning("Ashcon API 响应中纹理值无效: " + json);
+                plugin.getLogger().warning(() -> "Ashcon API 响应中纹理值无效: " + json);
                 return null;
             }
             SkinData skinData = new SkinData(playerName, variant, raw.getValue(), raw.getSignature());
             skinData.setCacheDuration(CACHE_DURATION_MS);
             return skinData;
         } catch (JsonSyntaxException e) {
-            plugin.getLogger().log(Level.WARNING, "解析 Ashcon 响应失败: " + json, e);
+            plugin.getLogger().log(Level.WARNING, "解析 Ashcon 响应失败: %s".formatted(json), e);
             return null;
         }
     }
@@ -682,12 +682,12 @@ public class SkinManager {
         try {
             MineToolsUuidResponse response = gson.fromJson(json, MineToolsUuidResponse.class);
             if (response == null || response.getId() == null) {
-                plugin.getLogger().warning("MineTools UUID API 响应格式异常: " + json);
+                plugin.getLogger().warning(() -> "MineTools UUID API 响应格式异常: " + json);
                 return null;
             }
             return parseUUID(response.getId());
         } catch (JsonSyntaxException e) {
-            plugin.getLogger().log(Level.WARNING, "解析 MineTools UUID 响应失败: " + json, e);
+            plugin.getLogger().log(Level.WARNING, "解析 MineTools UUID 响应失败: %s".formatted(json), e);
             return null;
         }
     }
@@ -700,7 +700,7 @@ public class SkinManager {
         try {
             MineToolsProfileResponse response = gson.fromJson(json, MineToolsProfileResponse.class);
             if (response == null || response.getProperties() == null || response.getProperties().length == 0) {
-                plugin.getLogger().warning("MineTools Profile API 响应格式异常: " + json);
+                plugin.getLogger().warning(() -> "MineTools Profile API 响应格式异常: " + json);
                 return null;
             }
             
@@ -708,7 +708,7 @@ public class SkinManager {
                 if ("textures".equals(property.getName())) {
                     if (property.getValue() == null || property.getValue().isEmpty() ||
                         property.getSignature() == null || property.getSignature().isEmpty()) {
-                        plugin.getLogger().warning("MineTools Profile API 响应中 textures 属性值无效: " + json);
+                        plugin.getLogger().warning(() -> "MineTools Profile API 响应中 textures 属性值无效: " + json);
                         return null;
                     }
                     SkinData skinData = new SkinData(playerName, variant, property.getValue(), property.getSignature());
@@ -717,10 +717,10 @@ public class SkinManager {
                 }
             }
             
-            plugin.getLogger().warning("MineTools Profile API 响应中未找到 textures 属性: " + json);
+            plugin.getLogger().warning(() -> "MineTools Profile API 响应中未找到 textures 属性: " + json);
             return null;
         } catch (JsonSyntaxException e) {
-            plugin.getLogger().log(Level.WARNING, "解析 MineTools Profile 响应失败: " + json, e);
+            plugin.getLogger().log(Level.WARNING, "解析 MineTools Profile 响应失败: %s".formatted(json), e);
             return null;
         }
     }

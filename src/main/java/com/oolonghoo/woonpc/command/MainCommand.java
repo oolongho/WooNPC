@@ -57,52 +57,35 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
         String subCommand = args[0].toLowerCase();
 
-        switch (subCommand) {
-            case "create":
-                return handleCreate(sender, args);
-            case "delete":
-                return handleRemove(sender, args);
-            case "list":
-                return handleList(sender, args);
-            case "info":
-                return handleInfo(sender, args);
-            case "skin":
-                return handleSkin(sender, args);
-            case "glowing":
-                return handleGlowing(sender, args);
-            case "hologram":
-                return handleHologram(sender, args);
-            case "look":
-                return handleTurnToPlayer(sender, args);
-            case "equip":
-                return handleEquipment(sender, args);
-            case "pose":
-                return handlePose(sender, args);
-            case "scale":
-                return handleScale(sender, args);
-            case "effect":
-                return handleEffect(sender, args);
-            case "action":
-                return handleAction(sender, args);
-            case "displayname":
-                return handleDisplayname(sender, args);
-            case "movehere":
-                return handleMoveHere(sender, args);
-            case "moveto":
-                return handleMoveTo(sender, args);
-            case "copy":
-                return handleCopy(sender, args);
-            case "teleport":
-                return handleTeleport(sender, args);
-            case "reload":
-                return handleReload(sender, args);
-            case "help":
+        return switch (subCommand) {
+            case "create" -> handleCreate(sender, args);
+            case "delete" -> handleRemove(sender, args);
+            case "list" -> handleList(sender, args);
+            case "info" -> handleInfo(sender, args);
+            case "skin" -> handleSkin(sender, args);
+            case "glowing" -> handleGlowing(sender, args);
+            case "hologram" -> handleHologram(sender, args);
+            case "look" -> handleTurnToPlayer(sender, args);
+            case "equip" -> handleEquipment(sender, args);
+            case "pose" -> handlePose(sender, args);
+            case "scale" -> handleScale(sender, args);
+            case "effect" -> handleEffect(sender, args);
+            case "action" -> handleAction(sender, args);
+            case "displayname" -> handleDisplayname(sender, args);
+            case "movehere" -> handleMoveHere(sender, args);
+            case "moveto" -> handleMoveTo(sender, args);
+            case "copy" -> handleCopy(sender, args);
+            case "teleport" -> handleTeleport(sender, args);
+            case "reload" -> handleReload(sender, args);
+            case "help" -> {
                 sendHelp(sender, label);
-                return true;
-            default:
+                yield true;
+            }
+            default -> {
                 sender.sendMessage(msg.getWithPrefix("unknown-command", "command", label));
-                return true;
-        }
+                yield true;
+            }
+        };
     }
 
     /**
@@ -260,7 +243,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
         // 显示NPC信息
         sender.sendMessage(msg.get("npc.info.header", "name", npc.getName()));
-        sender.sendMessage(msg.get("npc.info.id", "id", npc.getData().getId().toString()));
+        sender.sendMessage(msg.get("npc.info.id", "id", npc.getData().getId()));
         
         Location loc = npc.getLocation();
         sender.sendMessage(msg.get("npc.info.location",
@@ -410,7 +393,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         String action = args[2].toLowerCase();
 
         switch (action) {
-            case "add":
+            case "add" -> {
                 if (args.length < 4) {
                     sender.sendMessage(msg.getWithPrefix("help.hologram"));
                     return true;
@@ -418,9 +401,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 String text = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
                 npc.getData().addHologramLine(text);
                 sender.sendMessage(msg.getWithPrefix("hologram.added", "text", text));
-                break;
+            }
 
-            case "delete":
+            case "delete" -> {
                 if (args.length < 4) {
                     sender.sendMessage(msg.getWithPrefix("help.hologram"));
                     return true;
@@ -437,9 +420,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 } catch (NumberFormatException e) {
                     sender.sendMessage(msg.getWithPrefix("invalid-number"));
                 }
-                break;
+            }
 
-            case "set":
+            case "set" -> {
                 if (args.length < 5) {
                     sender.sendMessage(msg.getWithPrefix("help.hologram"));
                     return true;
@@ -452,14 +435,14 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 } catch (NumberFormatException e) {
                     sender.sendMessage(msg.getWithPrefix("invalid-number"));
                 }
-                break;
+            }
 
-            case "clear":
+            case "clear" -> {
                 npc.getData().getHologramLines().clear();
                 sender.sendMessage(msg.getWithPrefix("hologram.cleared"));
-                break;
+            }
 
-            case "list":
+            case "list" -> {
                 sender.sendMessage(msg.get("hologram.list.header"));
                 List<String> lines = npc.getData().getHologramLines();
                 if (lines.isEmpty()) {
@@ -469,10 +452,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(msg.get("hologram.list.format", "index", String.valueOf(i + 1), "text", lines.get(i)));
                     }
                 }
-                break;
+            }
 
-            default:
-                sender.sendMessage(msg.getWithPrefix("help.hologram"));
+            default -> sender.sendMessage(msg.getWithPrefix("help.hologram"));
         }
 
         npc.updateForAll();
@@ -564,26 +546,14 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
         Player player = (Player) sender;
 
-        // 检查是否使用 @hand 参数
-        if (args.length >= 4 && args[3].equalsIgnoreCase("@hand")) {
-            ItemStack item = player.getInventory().getItemInMainHand();
-            if (item == null || item.getType().isAir()) {
-                npc.getData().removeEquipment(slot);
-                sender.sendMessage(msg.getWithPrefix("equipment.cleared", "slot", slot.getConfigName()));
-            } else {
-                npc.getData().addEquipment(slot, item.clone());
-                sender.sendMessage(msg.getWithPrefix("equipment.set", "slot", slot.getConfigName()));
-            }
+        // 使用手中物品
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (item.getType().isAir()) {
+            npc.getData().removeEquipment(slot);
+            sender.sendMessage(msg.getWithPrefix("equipment.cleared", "slot", slot.getConfigName()));
         } else {
-            // 使用手中物品
-            ItemStack item = player.getInventory().getItemInMainHand();
-            if (item == null || item.getType().isAir()) {
-                npc.getData().removeEquipment(slot);
-                sender.sendMessage(msg.getWithPrefix("equipment.cleared", "slot", slot.getConfigName()));
-            } else {
-                npc.getData().addEquipment(slot, item.clone());
-                sender.sendMessage(msg.getWithPrefix("equipment.set", "slot", slot.getConfigName()));
-            }
+            npc.getData().addEquipment(slot, item.clone());
+            sender.sendMessage(msg.getWithPrefix("equipment.set", "slot", slot.getConfigName()));
         }
 
         npc.updateForAll();
@@ -762,7 +732,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         String npcId = npc.getData().getId();
 
         switch (action) {
-            case "add":
+            case "add" -> {
                 if (args.length < 5) {
                     sender.sendMessage(msg.getWithPrefix("help.action"));
                     return true;
@@ -801,9 +771,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(msg.getWithPrefix("action.added", 
                     "type", actionType, 
                     "order", String.valueOf(order)));
-                break;
+            }
 
-            case "delete":
+            case "delete" -> {
                 if (args.length < 5) {
                     sender.sendMessage(msg.getWithPrefix("help.action"));
                     return true;
@@ -827,15 +797,15 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                 } catch (NumberFormatException e) {
                     sender.sendMessage(msg.getWithPrefix("invalid-number"));
                 }
-                break;
+            }
 
-            case "clear":
+            case "clear" -> {
                 npc.getData().clearActions(trigger);
                 actionManager.clearNpcActions(npcId, trigger);
                 sender.sendMessage(msg.getWithPrefix("action.cleared"));
-                break;
+            }
 
-            case "list":
+            case "list" -> {
                 List<NpcAction.NpcActionData> actions = npc.getData().getActions(trigger);
                 if (actions.isEmpty()) {
                     sender.sendMessage(msg.get("action.list.empty"));
@@ -851,10 +821,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         "value", ad.value() != null ? ad.value() : ""
                     ));
                 }
-                break;
+            }
 
-            default:
-                sender.sendMessage(msg.getWithPrefix("help.action"));
+            default -> sender.sendMessage(msg.getWithPrefix("help.action"));
         }
 
         npcManager.saveNpcs();
@@ -1207,7 +1176,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
             String prefix = args[args.length - 1].toLowerCase();
 
             switch (subCmd) {
-                case "create":
+                case "create" -> {
                     if (args.length == 3) {
                         // 提供 --type 选项
                         completions.add("--type");
@@ -1219,9 +1188,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                             }
                         }
                     }
-                    break;
+                }
 
-                case "skin":
+                case "skin" -> {
                     if (args.length == 3) {
                         completions.add("@mirror");
                         completions.add("@none");
@@ -1231,9 +1200,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                             }
                         }
                     }
-                    break;
+                }
 
-                case "glowing":
+                case "glowing" -> {
                     if (args.length == 3) {
                         completions.addAll(Arrays.asList("true", "false"));
                     } else if (args.length == 4) {
@@ -1243,19 +1212,17 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                             }
                         }
                     }
-                    break;
+                }
 
-                case "hologram":
+                case "hologram" -> {
                     if (args.length == 3) {
                         completions.addAll(Arrays.asList("add", "delete", "set", "clear", "list"));
                     }
-                    break;
+                }
 
-                case "look":
-                    completions.addAll(Arrays.asList("true", "false"));
-                    break;
+                case "look" -> completions.addAll(Arrays.asList("true", "false"));
 
-                case "equip":
+                case "equip" -> {
                     if (args.length == 3) {
                         for (NpcEquipmentSlot slot : NpcEquipmentSlot.values()) {
                             if (slot.getConfigName().toLowerCase().startsWith(prefix)) {
@@ -1265,9 +1232,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                     } else if (args.length == 4) {
                         completions.add("@hand");
                     }
-                    break;
+                }
 
-                case "pose":
+                case "pose" -> {
                     if (args.length == 3) {
                         for (NpcPose pose : NpcPose.values()) {
                             if (pose.getConfigName().toLowerCase().startsWith(prefix)) {
@@ -1275,15 +1242,15 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                             }
                         }
                     }
-                    break;
+                }
                     
-                case "scale":
+                case "scale" -> {
                     if (args.length == 3) {
                         completions.addAll(Arrays.asList("0.5", "1.0", "1.5", "2.0", "3.0"));
                     }
-                    break;
+                }
                     
-                case "effect":
+                case "effect" -> {
                     if (args.length == 3) {
                         for (NpcEffect effect : NpcEffect.values()) {
                             if (effect.getName().toLowerCase().startsWith(prefix)) {
@@ -1293,9 +1260,9 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                     } else if (args.length == 4) {
                         completions.addAll(Arrays.asList("true", "false"));
                     }
-                    break;
+                }
 
-                case "action":
+                case "action" -> {
                     if (args.length == 3) {
                         // 触发器补全
                         for (ActionTrigger trigger : ActionTrigger.values()) {
@@ -1325,37 +1292,29 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                             }
                         }
                     }
-                    break;
+                }
 
-                case "copy":
+                case "copy" -> {
                     // 第二个参数是新NPC名称，不需要补全
-                    break;
+                }
                     
-                case "moveto":
+                case "moveto" -> {
                     // moveto <名称> <x> <y> <z> [yaw] [pitch]
                     Npc movetoNpc = npcManager.getNpc(args[1]);
                     if (movetoNpc != null) {
                         Location npcLoc = movetoNpc.getLocation();
                         if (npcLoc != null) {
-                            if (args.length == 3) {
-                                // X 坐标补全
-                                completions.add(String.valueOf(Math.round(npcLoc.getX() * 100.0) / 100.0));
-                            } else if (args.length == 4) {
-                                // Y 坐标补全
-                                completions.add(String.valueOf(Math.round(npcLoc.getY() * 100.0) / 100.0));
-                            } else if (args.length == 5) {
-                                // Z 坐标补全
-                                completions.add(String.valueOf(Math.round(npcLoc.getZ() * 100.0) / 100.0));
-                            } else if (args.length == 6) {
-                                // yaw 补全
-                                completions.add(String.valueOf(Math.round(npcLoc.getYaw())));
-                            } else if (args.length == 7) {
-                                // pitch 补全
-                                completions.add(String.valueOf(Math.round(npcLoc.getPitch())));
-                            }
+                            completions.add(switch (args.length) {
+                                case 3 -> String.valueOf(Math.round(npcLoc.getX() * 100.0) / 100.0);
+                                case 4 -> String.valueOf(Math.round(npcLoc.getY() * 100.0) / 100.0);
+                                case 5 -> String.valueOf(Math.round(npcLoc.getZ() * 100.0) / 100.0);
+                                case 6 -> String.valueOf(Math.round(npcLoc.getYaw()));
+                                case 7 -> String.valueOf(Math.round(npcLoc.getPitch()));
+                                default -> "";
+                            });
                         }
                     }
-                    break;
+                }
             }
         }
 

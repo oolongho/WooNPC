@@ -211,7 +211,7 @@ public class ActionManager {
                     context.nextAction();
                 }
             } catch (Exception e) {
-                WooNPC.getInstance().getLogger().warning("Error executing action " + actionData.action().getName() + ": " + e.getMessage());
+                WooNPC.getInstance().getLogger().warning(() -> "Error executing action " + actionData.action().getName() + ": " + e.getMessage());
                 context.nextAction();
             }
         }
@@ -237,7 +237,7 @@ public class ActionManager {
     private void debug(String message) {
         WooNPC plugin = WooNPC.getInstance();
         if (plugin != null && plugin.getConfigLoader().isDebug()) {
-            plugin.getLogger().info("[ActionManager] " + message);
+            plugin.getLogger().info(() -> "[ActionManager] " + message);
         }
     }
 }

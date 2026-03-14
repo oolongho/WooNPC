@@ -62,7 +62,7 @@ public class NpcManager {
             try {
                 dataFile.createNewFile();
             } catch (IOException e) {
-                plugin.getLogger().severe("无法创建NPC数据文件: " + e.getMessage());
+                plugin.getLogger().severe(() -> "无法创建NPC数据文件: " + e.getMessage());
                 return;
             }
         }
@@ -101,12 +101,12 @@ public class NpcManager {
                     
                     debug.debug("加载NPC: " + name);
                 } catch (Exception e) {
-                    plugin.getLogger().warning("加载NPC " + name + " 失败: " + e.getMessage());
+                    plugin.getLogger().warning(() -> "加载NPC " + name + " 失败: " + e.getMessage());
                 }
             }
         }
-        
-        plugin.getLogger().info("已加载 " + npcsByName.size() + " 个NPC");
+
+        plugin.getLogger().info(() -> "已加载 " + npcsByName.size() + " 个NPC");
     }
 
     /**
@@ -180,7 +180,7 @@ public class NpcManager {
             dataConfig.save(dataFile);
             debug.debug("保存了 " + savedCount + " 个NPC (force=" + force + ")");
         } catch (IOException e) {
-            plugin.getLogger().severe("保存NPC数据失败: " + e.getMessage());
+            plugin.getLogger().severe(() -> "保存NPC数据失败: " + e.getMessage());
         }
         
         return savedCount;
@@ -445,13 +445,18 @@ public class NpcManager {
                     String actionType = actionSection.getString("type", "");
                     String value = actionSection.getString("value", "");
                     int order = actionSection.getInt("order", 0);
-                    
+
+                    if (actionType == null || actionType.isEmpty()) {
+                        plugin.getLogger().warning(() -> "Empty action type for NPC " + data.getName());
+                        continue;
+                    }
+
                     com.oolonghoo.woonpc.action.NpcAction action = actionManager.getAction(actionType);
                     if (action != null) {
                         actionList.add(new com.oolonghoo.woonpc.action.NpcAction.NpcActionData(order, action, value));
                         debug.debug("Loaded action: " + actionType + " for trigger: " + triggerName);
                     } else {
-                        plugin.getLogger().warning("Unknown action type: " + actionType + " for NPC " + data.getName());
+                        plugin.getLogger().warning(() -> "Unknown action type: " + actionType + " for NPC " + data.getName());
                     }
                 }
                 
@@ -461,7 +466,7 @@ public class NpcManager {
                     debug.debug("Loaded " + actionList.size() + " actions for trigger " + triggerName + " on NPC " + data.getName());
                 }
             } catch (IllegalArgumentException ignored) {
-                plugin.getLogger().warning("Invalid trigger name: " + triggerName + " for NPC " + data.getName());
+                plugin.getLogger().warning(() -> "Invalid trigger name: " + triggerName + " for NPC " + data.getName());
             }
         }
     }

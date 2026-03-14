@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 提供缓存机制优化反射性能
  * o
  */
+@SuppressWarnings("java:S3457")
 public final class ReflectionUtil {
     
     private static final Map<String, Method> methodCache = new ConcurrentHashMap<>();
@@ -36,7 +37,7 @@ public final class ReflectionUtil {
             try {
                 return Class.forName(name);
             } catch (ClassNotFoundException e) {
-                Bukkit.getLogger().warning("[WooNPC] Class not found: " + name);
+                Bukkit.getLogger().warning(() -> "[WooNPC] Class not found: " + name);
                 return null;
             }
         });
@@ -88,7 +89,7 @@ public final class ReflectionUtil {
                 if (superClass != null) {
                     return getMethod(superClass, methodName, parameterTypes);
                 }
-                Bukkit.getLogger().warning("[WooNPC] Method not found: " + key);
+                Bukkit.getLogger().warning("[WooNPC] Method not found: " + key + " - " + e.getMessage());
                 return null;
             }
         });
@@ -112,8 +113,8 @@ public final class ReflectionUtil {
         
         try {
             return method.invoke(instance, args);
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to invoke method: " + methodName + " - " + e.getMessage());
+        } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            Bukkit.getLogger().warning(() -> "[WooNPC] Failed to invoke method: " + methodName + " - " + e.getMessage());
             return null;
         }
     }
@@ -136,7 +137,7 @@ public final class ReflectionUtil {
         
         try {
             return method.invoke(null, args);
-        } catch (Exception e) {
+        } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
             Bukkit.getLogger().warning("[WooNPC] Failed to invoke static method: " + methodName + " - " + e.getMessage());
             return null;
         }
@@ -187,7 +188,7 @@ public final class ReflectionUtil {
         try {
             return field.get(instance);
         } catch (IllegalAccessException e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to get field value: " + fieldName + " - " + e.getMessage());
+            Bukkit.getLogger().warning(() -> "[WooNPC] Failed to get field value: " + fieldName + " - " + e.getMessage());
             return null;
         }
     }
@@ -210,7 +211,7 @@ public final class ReflectionUtil {
             field.set(instance, value);
             return true;
         } catch (IllegalAccessException e) {
-            Bukkit.getLogger().warning("[WooNPC] Failed to set field value: " + fieldName + " - " + e.getMessage());
+            Bukkit.getLogger().warning(() -> "[WooNPC] Failed to set field value: " + fieldName + " - " + e.getMessage());
             return false;
         }
     }
@@ -233,7 +234,7 @@ public final class ReflectionUtil {
                 constructor.setAccessible(true);
                 return constructor;
             } catch (NoSuchMethodException e) {
-                Bukkit.getLogger().warning("[WooNPC] Constructor not found: " + key);
+                Bukkit.getLogger().warning(() -> "[WooNPC] Constructor not found: " + key);
                 return null;
             }
         });
@@ -256,7 +257,7 @@ public final class ReflectionUtil {
         
         try {
             return constructor.newInstance(args);
-        } catch (Exception e) {
+        } catch (InstantiationException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
             Bukkit.getLogger().warning("[WooNPC] Failed to create instance: " + clazz.getName() + " - " + e.getMessage());
             return null;
         }

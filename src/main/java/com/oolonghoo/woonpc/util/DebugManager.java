@@ -23,7 +23,7 @@ public class DebugManager {
      */
     public void debug(String message) {
         if (isEnabled()) {
-            plugin.getLogger().info("[DEBUG] " + message);
+            plugin.getLogger().info(() -> "[DEBUG] " + message);
         }
     }
 
@@ -35,7 +35,7 @@ public class DebugManager {
      */
     public void debug(String format, Object... args) {
         if (isEnabled()) {
-            plugin.getLogger().info("[DEBUG] " + String.format(format, args));
+            plugin.getLogger().info(() -> "[DEBUG] " + String.format(format, args));
         }
     }
 
@@ -45,7 +45,7 @@ public class DebugManager {
      * @param message 警告消息
      */
     public void warn(String message) {
-        plugin.getLogger().warning("[DEBUG] " + message);
+        plugin.getLogger().warning(() -> "[DEBUG] " + message);
     }
 
     /**
@@ -55,12 +55,12 @@ public class DebugManager {
      * @param throwable 异常
      */
     public void error(String message, Throwable throwable) {
-        plugin.getLogger().severe("[DEBUG] " + message);
+        plugin.getLogger().severe(() -> "[DEBUG] " + message);
         if (throwable != null && isEnabled()) {
-            plugin.getLogger().severe("异常详情：" + throwable.getMessage());
+            plugin.getLogger().severe(() -> "异常详情：" + throwable.getMessage());
             plugin.getLogger().severe("堆栈跟踪：");
             for (StackTraceElement element : throwable.getStackTrace()) {
-                plugin.getLogger().severe("  at " + element.toString());
+                plugin.getLogger().severe(() -> "  at " + element.toString());
             }
         }
     }

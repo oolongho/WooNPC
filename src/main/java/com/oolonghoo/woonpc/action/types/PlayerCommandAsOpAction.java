@@ -36,8 +36,8 @@ public class PlayerCommandAsOpAction extends NpcAction {
                 player.setOp(true);
             }
             Bukkit.dispatchCommand(player, sanitizedCommand);
-        } catch (Exception e) {
-            WooNPC.getInstance().getLogger().warning(
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            WooNPC.getInstance().getLogger().warning(() ->
                 "[WooNPC] 执行 OP 命令失败：" + sanitizedCommand + " - " + e.getMessage()
             );
         } finally {

@@ -55,7 +55,7 @@ public final class ColorUtil {
                 return LegacyComponentSerializer.legacySection().serialize(component);
             } catch (Exception e) {
                 // MiniMessage 解析失败，回退到传统格式
-                Bukkit.getLogger().fine("[WooNPC] MiniMessage 解析失败：" + e.getMessage());
+                Bukkit.getLogger().fine(() -> "[WooNPC] MiniMessage 解析失败：" + e.getMessage());
             }
         }
         
@@ -81,7 +81,7 @@ public final class ColorUtil {
                 return MINI_MESSAGE.deserialize(text);
             } catch (Exception e) {
                 // MiniMessage 解析失败，回退到传统格式
-                Bukkit.getLogger().fine("[WooNPC] MiniMessage 解析失败：" + e.getMessage());
+                Bukkit.getLogger().fine(() -> "[WooNPC] MiniMessage 解析失败：" + e.getMessage());
             }
         }
         

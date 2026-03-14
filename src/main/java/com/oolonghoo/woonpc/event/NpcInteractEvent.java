@@ -20,7 +20,6 @@ public class NpcInteractEvent extends NpcEvent implements Cancellable {
     private final Player player;
     private final ActionTrigger trigger;
     private List<NpcAction.NpcActionData> actions;
-    private boolean cancelled = false;
     
     public NpcInteractEvent(Npc npc, Player player, ActionTrigger trigger, List<NpcAction.NpcActionData> actions) {
         super(npc);
@@ -68,12 +67,12 @@ public class NpcInteractEvent extends NpcEvent implements Cancellable {
     
     @Override
     public boolean isCancelled() {
-        return cancelled;
+        return super.cancelled;
     }
     
     @Override
     public void setCancelled(boolean cancel) {
-        this.cancelled = cancel;
+        super.cancelled = cancel;
     }
     
     @Override

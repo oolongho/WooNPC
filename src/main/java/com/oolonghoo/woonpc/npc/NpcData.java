@@ -559,7 +559,10 @@ public class NpcData {
         if (world == null) {
             world = Bukkit.getWorlds().get(0); // 默认使用主世界
         }
-        
+        if (world == null) {
+            throw new IllegalStateException("No world available for NPC " + name);
+        }
+
         double x = section.getDouble("location.x");
         double y = section.getDouble("location.y");
         double z = section.getDouble("location.z");

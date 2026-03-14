@@ -111,7 +111,7 @@ public class LookTracker implements Runnable {
         int interval = config.getLookUpdateInterval();
         this.task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this, interval, interval);
         
-        plugin.getLogger().info("头部旋转追踪器已启动，检测间隔: " + interval + " tick");
+        plugin.getLogger().info(() -> "头部旋转追踪器已启动，检测间隔: " + interval + " tick");
     }
     
     /**

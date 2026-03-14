@@ -40,7 +40,11 @@ public class ConsoleCommandAction extends NpcAction {
         // 安全检查：清理和验证命令
         String sanitizedCommand = CommandSafety.sanitizeCommand(command);
         if (sanitizedCommand == null) {
-            Bukkit.getLogger().warning("[WooNPC] 玩家 " + player.getName() + " 尝试执行被禁止的命令：" + command);
+            final String playerName = player.getName();
+            final String blockedCommand = command;
+            @SuppressWarnings("java:S3457")
+            String warningMsg = "[WooNPC] 玩家 " + playerName + " 尝试执行被禁止的命令：" + blockedCommand;
+            Bukkit.getLogger().warning(warningMsg);
             player.sendMessage("§c[系统] 该命令被禁止使用");
             return;
         }

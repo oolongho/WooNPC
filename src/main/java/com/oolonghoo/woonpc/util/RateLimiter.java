@@ -82,6 +82,7 @@ public class RateLimiter {
      * @param key 请求标识
      * @throws InterruptedException 如果等待被中断
      */
+    @SuppressWarnings("java:S2142") // 短暂睡眠用于限流重试，中断不影响业务逻辑
     public void acquire(String key) throws InterruptedException {
         while (!tryAcquire(key)) {
             // 等待一小段时间后重试

@@ -151,18 +151,12 @@ public class NpcInteractListener implements Listener {
             new java.util.ArrayList<>();
         java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> directActions = 
             actionManager.getNpcActions(npc.getData().getId(), trigger);
-        if (directActions != null) {
-            actions.addAll(directActions);
-        }
+        actions.addAll(directActions);
         
         // 添加 ANY_CLICK 触发器的动作
-        if (trigger == ActionTrigger.LEFT_CLICK || trigger == ActionTrigger.RIGHT_CLICK) {
-            java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> anyClickActions = 
-                actionManager.getNpcActions(npc.getData().getId(), ActionTrigger.ANY_CLICK);
-            if (anyClickActions != null) {
-                actions.addAll(anyClickActions);
-            }
-        }
+        java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> anyClickActions = 
+            actionManager.getNpcActions(npc.getData().getId(), ActionTrigger.ANY_CLICK);
+        actions.addAll(anyClickActions);
         
         // 触发 NPC 交互事件
         com.oolonghoo.woonpc.event.NpcInteractEvent interactEvent = 
@@ -187,7 +181,6 @@ public class NpcInteractListener implements Listener {
         if (Bukkit.isPrimaryThread()) {
             actionManager.executeActions(npc, player, trigger);
         } else {
-            final java.util.List<com.oolonghoo.woonpc.action.NpcAction.NpcActionData> finalActions = actions;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 actionManager.executeActions(npc, player, trigger);
             });

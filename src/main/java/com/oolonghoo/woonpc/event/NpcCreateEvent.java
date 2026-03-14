@@ -13,7 +13,6 @@ import org.bukkit.event.HandlerList;
 public class NpcCreateEvent extends NpcEvent implements Cancellable {
     
     private static final HandlerList handlers = new HandlerList();
-    private boolean cancelled = false;
     
     public NpcCreateEvent(Npc npc) {
         super(npc);
@@ -21,12 +20,12 @@ public class NpcCreateEvent extends NpcEvent implements Cancellable {
     
     @Override
     public boolean isCancelled() {
-        return cancelled;
+        return super.cancelled;
     }
     
     @Override
     public void setCancelled(boolean cancel) {
-        this.cancelled = cancel;
+        super.cancelled = cancel;
     }
     
     /**

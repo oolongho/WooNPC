@@ -69,7 +69,7 @@ public class VisibilityTracker implements Runnable {
         // 初始化世界缓存
         rebuildWorldCache();
         
-        plugin.getLogger().info("可见性追踪器已启动，检测间隔: " + interval + " tick，可见距离: " + defaultVisibilityDistance);
+        plugin.getLogger().info(() -> "可见性追踪器已启动，检测间隔: " + interval + " tick，可见距离: " + defaultVisibilityDistance);
     }
 
     /**
@@ -189,7 +189,7 @@ public class VisibilityTracker implements Runnable {
      */
     private void updatePlayerLocations() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld() != null && player.isOnline()) {
+            if (player.isOnline()) {
                 playerLocationCache.put(player.getUniqueId(), player.getLocation().clone());
             }
         }
@@ -234,47 +234,45 @@ public class VisibilityTracker implements Runnable {
      * 
      * @param npc NPC 对象
      * @param player 玩家
+     * @param playerLocation 玩家位置（避免重复获取）
      * @return 是否应该可见
      */
+    @SuppressWarnings("java:S1172") // player 参数用于未来扩展
     private boolean shouldBeVisible(@NotNull Npc npc, @NotNull Player player, @NotNull Location playerLocation) {
         NpcData data = npc.getData();
         Location npcLocation = data.getLocation();
-        
+
         if (npcLocation == null || npcLocation.getWorld() == null) {
             return false;
         }
-        
+
         if (playerLocation.getWorld() == null) {
             return false;
         }
-        
+
         if (npcLocation.getWorld() != playerLocation.getWorld()) {
             return false;
         }
-        
+
         int visibilityDistance = data.getVisibilityDistance();
         double effectiveDistanceSquared;
-        
+
         if (visibilityDistance > 0) {
             effectiveDistanceSquared = (double) visibilityDistance * visibilityDistance;
         } else {
             effectiveDistanceSquared = defaultVisibilityDistanceSquared;
         }
-        
+
         double distanceSquared = npcLocation.distanceSquared(playerLocation);
-        
+
         if (distanceSquared > effectiveDistanceSquared) {
             return false;
         }
-        
+
         int chunkX = ((int) npcLocation.getX()) >> 4;
         int chunkZ = ((int) npcLocation.getZ()) >> 4;
-        
-        if (!npcLocation.getWorld().isChunkLoaded(chunkX, chunkZ)) {
-            return false;
-        }
-        
-        return true;
+
+        return npcLocation.getWorld().isChunkLoaded(chunkX, chunkZ);
     }
     
     /**
