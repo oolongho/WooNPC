@@ -140,7 +140,7 @@ teleport:
 # 帮助
 help:
   header: "&e========== &6WooNPC 帮助 &e=========="
-  create: "&e/{command} create <id> [--type <类型>] &7- 创建NPC (id为唯一标识)"
+  create: "&e/{command} create <id> [--type <类型>] &7- 创建NPC (支持Tab补全实体类型)"
   remove: "&e/{command} remove <id> &7- 删除NPC"
   skin: "&e/{command} skin <id> <皮肤/@mirror> &7- 设置皮肤"
   glowing: "&e/{command} glowing <id> <true/false> [颜色] &7- 设置发光"
