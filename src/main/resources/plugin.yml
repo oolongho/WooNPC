@@ -3,7 +3,7 @@ version: ${project.version}
 main: com.oolonghoo.woonpc.WooNPC
 api-version: '1.21'
 author: oolongho
-description: 轻量级高性能 NPC 插件（纯数据包实现）
+description: A simple NPC plugin.
 
 libraries:
   - com.google.code.gson:gson:2.10.1
