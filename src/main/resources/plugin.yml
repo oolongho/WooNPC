@@ -3,7 +3,7 @@ version: ${project.version}
 main: com.oolonghoo.woonpc.WooNPC
 api-version: '1.21'
 author: oolongho
-description: 轻量级高性能 NPC 插件
+description: 轻量级高性能 NPC 插件（纯数据包实现）
 
 libraries:
   - com.google.code.gson:gson:2.10.1
@@ -38,7 +38,7 @@ permissions:
       woonpc.pose: true
       woonpc.scale: true
       woonpc.effect: true
-      woonpc.reload: true
+      woonpc.edit: true
       woonpc.reload: true
   
   woonpc.use:
