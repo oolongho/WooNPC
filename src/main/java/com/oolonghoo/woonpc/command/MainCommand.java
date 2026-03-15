@@ -912,7 +912,8 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
 
         Player player = (Player) sender;
-        npc.getData().setLocation(player.getLocation());
+        Location playerLoc = player.getLocation();
+        npc.getData().setLocation(playerLoc);
         npc.moveForAll();
         
         sender.sendMessage(msg.getWithPrefix("move.here", "name", name));

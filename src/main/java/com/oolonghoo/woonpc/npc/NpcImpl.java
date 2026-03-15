@@ -305,6 +305,13 @@ public class NpcImpl extends Npc {
             packets.add(adapter.createRemoveEntityPacket(sittingVehicleId));
         }
         
+        // 移除团队（用于发光和名称标签）
+        String teamName = "npc-" + uuid.toString().substring(0, 8);
+        packets.add(adapter.createRemoveTeamPacket(teamName));
+        
+        // 重置团队创建状态
+        isTeamCreated.remove(player.getUniqueId());
+        
         adapter.sendPackets(player, packets);
         
         boolean wasVisible = isVisibleForPlayer.getOrDefault(player.getUniqueId(), false);
