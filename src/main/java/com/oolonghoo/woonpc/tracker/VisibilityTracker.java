@@ -49,6 +49,11 @@ public class VisibilityTracker implements Runnable {
     private int cacheUpdateCounter = 0;
     private static final int CACHE_UPDATE_INTERVAL = 20; // 每 20 次检测更新一次世界缓存
 
+    // 缓存大小限制
+    private int maxPlayerLocationCacheSize = 100;
+    private int cacheCleanupCounter = 0;
+    private static final int CACHE_CLEANUP_INTERVAL = 100; // 每 100 次检测清理一次过期缓存
+
     public VisibilityTracker(WooNPC plugin) {
         this.plugin = plugin;
         this.joinDelayPlayers = ConcurrentHashMap.newKeySet();
@@ -62,14 +67,18 @@ public class VisibilityTracker implements Runnable {
         this.defaultVisibilityDistance = config.getVisibilityDistance();
         this.defaultVisibilityDistanceSquared = (double) defaultVisibilityDistance * defaultVisibilityDistance;
         this.joinDelay = 20; // 1 秒延迟
-        
+
+        // 读取缓存配置
+        this.maxPlayerLocationCacheSize = config.getMaxPlayerLocationCacheSize();
+
         int interval = config.getVisibilityCheckInterval();
         this.task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this, interval, interval);
-        
+
         // 初始化世界缓存
         rebuildWorldCache();
-        
-        plugin.getLogger().info(() -> "可见性追踪器已启动，检测间隔: " + interval + " tick，可见距离: " + defaultVisibilityDistance);
+
+        plugin.getLogger().info(() -> "可见性追踪器已启动，检测间隔: " + interval + " tick，可见距离: " + defaultVisibilityDistance +
+                ", 最大位置缓存: " + maxPlayerLocationCacheSize);
     }
 
     /**
@@ -80,9 +89,7 @@ public class VisibilityTracker implements Runnable {
             task.cancel();
             task = null;
         }
-        joinDelayPlayers.clear();
-        playerLocationCache.clear();
-        worldNpcCache.clear();
+        clearAllCaches();
     }
     
     /**
@@ -182,6 +189,45 @@ public class VisibilityTracker implements Runnable {
             onlinePlayers.add(player.getUniqueId());
         }
         playerLocationCache.keySet().retainAll(onlinePlayers);
+
+        // 定期检查缓存大小并清理
+        cacheCleanupCounter++;
+        if (cacheCleanupCounter >= CACHE_CLEANUP_INTERVAL) {
+            cacheCleanupCounter = 0;
+            checkAndTrimCache();
+        }
+    }
+
+    /**
+     * 检查并修剪缓存大小
+     * 当缓存超过配置的最大值时，清理最旧的条目
+     */
+    private void checkAndTrimCache() {
+        int currentSize = playerLocationCache.size();
+        if (currentSize > maxPlayerLocationCacheSize) {
+            // 清理所有离线玩家的缓存
+            Set<UUID> onlinePlayerIds = new HashSet<>();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                onlinePlayerIds.add(player.getUniqueId());
+            }
+
+            int removed = 0;
+            Iterator<UUID> iterator = playerLocationCache.keySet().iterator();
+            while (iterator.hasNext()) {
+                UUID playerId = iterator.next();
+                if (!onlinePlayerIds.contains(playerId)) {
+                    iterator.remove();
+                    removed++;
+                }
+            }
+
+            if (plugin.getConfigLoader().isDebug() && removed > 0) {
+                final int finalRemoved = removed;
+                final int sizeAfterCleanup = playerLocationCache.size();
+                plugin.getLogger().info(() -> "[VisibilityTracker] 缓存清理: 移除 " + finalRemoved +
+                        " 个离线玩家缓存，当前大小: " + sizeAfterCleanup + "/" + maxPlayerLocationCacheSize);
+            }
+        }
     }
     
     /**
@@ -363,10 +409,75 @@ public class VisibilityTracker implements Runnable {
     
     /**
      * 获取世界缓存统计信息
-     * 
+     *
      * @return 世界数量
      */
     public int getWorldCacheSize() {
         return worldNpcCache.size();
+    }
+
+    /**
+     * 获取玩家位置缓存大小
+     *
+     * @return 缓存大小
+     */
+    public int getPlayerLocationCacheSize() {
+        return playerLocationCache.size();
+    }
+
+    /**
+     * 获取加入延迟玩家数量
+     *
+     * @return 玩家数量
+     */
+    public int getJoinDelayPlayersSize() {
+        return joinDelayPlayers.size();
+    }
+
+    /**
+     * 清理指定玩家的所有缓存数据
+     * 在玩家退出服务器时调用，防止内存泄漏
+     *
+     * @param playerId 玩家 UUID
+     */
+    public void cleanupPlayer(@NotNull UUID playerId) {
+        // 清理位置缓存
+        Location removedLocation = playerLocationCache.remove(playerId);
+
+        // 清理加入延迟标记
+        joinDelayPlayers.remove(playerId);
+
+        // 记录调试信息
+        if (plugin.getConfigLoader().isDebug()) {
+            plugin.getLogger().info(() -> "[VisibilityTracker] 已清理玩家缓存: " + playerId +
+                    ", 位置缓存已移除: " + (removedLocation != null));
+        }
+    }
+
+    /**
+     * 获取缓存统计信息（用于调试）
+     *
+     * @return 缓存统计信息字符串
+     */
+    public String getCacheStats() {
+        return String.format(
+                "缓存统计 [世界缓存: %d, 玩家位置缓存: %d, 加入延迟玩家: %d]",
+                worldNpcCache.size(),
+                playerLocationCache.size(),
+                joinDelayPlayers.size()
+        );
+    }
+
+    /**
+     * 清理所有缓存（插件禁用时调用）
+     */
+    public void clearAllCaches() {
+        playerLocationCache.clear();
+        joinDelayPlayers.clear();
+        worldNpcCache.clear();
+
+        if (plugin.getConfigLoader().isDebug()) {
+            plugin.getLogger().info("[VisibilityTracker] 已清理所有缓存");
+        }
     }
 }

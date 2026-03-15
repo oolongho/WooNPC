@@ -27,6 +27,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -1019,8 +1020,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         // 复制其他属性
         target.getData().setSkinName(sourceData.getSkinName());
         target.getData().setSkinMirror(sourceData.isSkinMirror());
-        // 显示名称使用新名称，不复制源NPC的显示名称
-        target.getData().setDisplayName(targetName);
+        target.getData().setDisplayName(sourceData.getDisplayName());
         target.getData().setShowInTab(sourceData.isShowInTab());
         target.getData().setTurnToPlayer(sourceData.isTurnToPlayer());
         target.getData().setGlowing(sourceData.isGlowing());
@@ -1028,6 +1028,17 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         target.getData().setPose(sourceData.getPose());
         target.getData().setScale(sourceData.getScale());
         target.getData().setType(sourceData.getType());
+        
+        // 复制装备
+        Map<NpcEquipmentSlot, ItemStack> sourceEquipment = sourceData.getEquipment();
+        for (Map.Entry<NpcEquipmentSlot, ItemStack> entry : sourceEquipment.entrySet()) {
+            target.getData().getEquipment().put(entry.getKey(), entry.getValue().clone());
+        }
+        
+        // 复制效果
+        for (NpcEffect effect : sourceData.getEffects()) {
+            target.getData().addEffect(effect);
+        }
 
         target.spawnForAll();
         npcManager.saveNpcs();

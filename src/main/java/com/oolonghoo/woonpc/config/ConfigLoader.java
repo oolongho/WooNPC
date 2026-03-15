@@ -46,6 +46,10 @@ public class ConfigLoader {
     private boolean visibilityCheckChunkLoaded;
     private boolean visibilityCacheEnabled;
 
+    // 缓存大小限制配置
+    private int maxPlayerLocationCacheSize;
+    private int cacheCleanupInterval;
+
     public ConfigLoader(WooNPC plugin) {
         this.plugin = plugin;
     }
@@ -93,6 +97,10 @@ public class ConfigLoader {
 
         this.visibilityCheckChunkLoaded = config.getBoolean("visibility.check-chunk-loaded", true);
         this.visibilityCacheEnabled = config.getBoolean("visibility.cache-enabled", true);
+
+        // 缓存大小限制配置
+        this.maxPlayerLocationCacheSize = config.getInt("cache.player-location.max-size", 100);
+        this.cacheCleanupInterval = config.getInt("cache.player-location.cleanup-interval", 6000);
     }
 
     public boolean isDebug() { return debug; }
@@ -123,4 +131,6 @@ public class ConfigLoader {
     public boolean isSkinFileCacheEnabled() { return skinFileCacheEnabled; }
     public boolean isVisibilityCheckChunkLoaded() { return visibilityCheckChunkLoaded; }
     public boolean isVisibilityCacheEnabled() { return visibilityCacheEnabled; }
+    public int getMaxPlayerLocationCacheSize() { return maxPlayerLocationCacheSize; }
+    public int getCacheCleanupInterval() { return cacheCleanupInterval; }
 }

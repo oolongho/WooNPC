@@ -1,70 +1,84 @@
 package com.oolonghoo.woonpc.npc;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMultimap;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
-import com.mojang.datafixers.util.Pair;
 import io.papermc.paper.adventure.PaperAdventure;
-import net.minecraft.Optionull;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.RemoteChatSession;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.*;
-import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.scores.PlayerTeam;
-import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
-import org.bukkit.craftbukkit.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.entity.Player;
 
 import com.oolonghoo.woonpc.util.ColorUtil;
 import com.oolonghoo.woonpc.util.PlaceholderUtil;
 import com.oolonghoo.woonpc.WooNPC;
+import com.oolonghoo.woonpc.version.VersionAdapter;
+import com.oolonghoo.woonpc.version.VersionAdapterFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 纯数据包 NPC 实现
+ * <p>
+ * 不创建真实实体对象，仅通过数据包模拟 NPC 行为。
+ * 所有操作都通过 VersionAdapter 发送数据包完成。
+ * </p>
+ *
+ * @author oolongho
+ * @since 2.0.0
+ */
 public class NpcImpl extends Npc {
     
-    private Entity npc;
-    private final String localName;
+    // 实体 ID 生成器（使用负数避免与真实实体冲突）
+    private static final AtomicInteger ENTITY_ID_GENERATOR = new AtomicInteger(Integer.MAX_VALUE - 100000);
+    
+    // 实体 ID（由服务端分配）
+    private int entityId;
+    
+    // NPC UUID
     private final UUID uuid;
+    
+    // 本地名称（用于玩家列表）
+    private final String localName;
+    
+    // GameProfile（用于玩家型 NPC）
+    private GameProfile gameProfile;
+    
+    // 坐骑实体（用于坐姿）
     private Display.TextDisplay sittingVehicle;
+    private int sittingVehicleId = -1;
+    
+    // 当前姿势
+    private Pose currentPose = Pose.STANDING;
+    
+    // 当前朝向
+    private float currentYaw = 0f;
+    private float currentPitch = 0f;
     
     // 区块可见性缓存 (Player UUID -> Chunk Key -> Boolean)
     private final Map<UUID, Map<Long, Boolean>> chunkVisibilityCache = createLRUCache(500);
     
     // 缓存失效计数器
     private int cacheInvalidationCounter = 0;
-    private static final int CACHE_INVALIDATION_INTERVAL = 100; // 每 100 次检查清理一次缓存
+    private static final int CACHE_INVALIDATION_INTERVAL = 100;
+    
+    // 实体数据访问器缓存（由 EntityMetadata 管理）
+    // 注：反射缓存已移至 AbstractVersionAdapter
     
     /**
      * 创建两级 LRU 缓存（外层 LRU，内层并发）
-     * @param maxSize 最大缓存玩家数量
-     * @return LRU 缓存 Map
      */
     private static <K, V> Map<K, Map<Long, V>> createLRUCache(int maxSize) {
         return new java.util.LinkedHashMap<>(maxSize, 0.75f, true) {
@@ -75,171 +89,19 @@ public class NpcImpl extends Npc {
         };
     }
     
-    private static Method gameProfileNameMethod;
-    private static Method gameProfileIdMethod;
-    private static Method gameProfilePropertiesMethod;
-    private static Constructor<?> gameProfileConstructorWithProps;
-    private static Constructor<?> propertyMapConstructor;
-    private static Method serverPlayerLevelMethod;
-    private static Constructor<?> playerInfoEntryConstructor;
-    private static boolean initialized = false;
-    
-    static {
-        initReflection();
-    }
-    
-    private static synchronized void initReflection() {
-        if (initialized) return;
-        initialized = true;
-        
-        try {
-            gameProfileNameMethod = GameProfile.class.getMethod("getName");
-        } catch (NoSuchMethodException e) {
-            try {
-                gameProfileNameMethod = GameProfile.class.getMethod("name");
-            } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getName method: {0}", ex.getMessage());
-            }
-        }
-        try {
-            gameProfileIdMethod = GameProfile.class.getMethod("getId");
-        } catch (NoSuchMethodException e) {
-            try {
-                gameProfileIdMethod = GameProfile.class.getMethod("id");
-            } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getId method: {0}", ex.getMessage());
-            }
-        }
-        try {
-            gameProfilePropertiesMethod = GameProfile.class.getMethod("getProperties");
-        } catch (NoSuchMethodException e) {
-            try {
-                gameProfilePropertiesMethod = GameProfile.class.getMethod("properties");
-            } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get GameProfile.getProperties method: {0}", ex.getMessage());
-            }
-        }
-        try {
-            gameProfileConstructorWithProps = GameProfile.class.getConstructor(UUID.class, String.class, PropertyMap.class);
-        } catch (NoSuchMethodException e) {
-            gameProfileConstructorWithProps = null;
-        }
-        try {
-            propertyMapConstructor = PropertyMap.class.getConstructor(ImmutableMultimap.class);
-        } catch (NoSuchMethodException e) {
-            propertyMapConstructor = null;
-        }
-        try {
-            serverPlayerLevelMethod = ServerPlayer.class.getMethod("serverLevel");
-        } catch (NoSuchMethodException e) {
-            try {
-                serverPlayerLevelMethod = ServerPlayer.class.getMethod("level");
-            } catch (NoSuchMethodException ex) {
-                Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get ServerPlayer.level method: {0}", ex.getMessage());
-            }
-        }
-        try {
-            playerInfoEntryConstructor = ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructor(
-                    UUID.class, GameProfile.class, boolean.class, int.class, 
-                    net.minecraft.world.level.GameType.class, Component.class, 
-                    boolean.class, int.class, net.minecraft.network.chat.RemoteChatSession.Data.class
-            );
-        } catch (NoSuchMethodException e) {
-            playerInfoEntryConstructor = null;
-            for (Constructor<?> constructor : ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructors()) {
-                if (constructor.getParameterCount() >= 6) {
-                    playerInfoEntryConstructor = constructor;
-                    break;
-                }
-            }
-        }
-    }
-    
-    private static String getProfileName(GameProfile profile) {
-        if (profile == null) return "";
-        try {
-            if (gameProfileNameMethod != null) {
-                return (String) gameProfileNameMethod.invoke(profile);
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile name: {0}", e.getMessage());
-        }
-        return "";
-    }
-
-    private static UUID getProfileId(GameProfile profile) {
-        if (profile == null) return null;
-        try {
-            if (gameProfileIdMethod != null) {
-                return (UUID) gameProfileIdMethod.invoke(profile);
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile id: {0}", e.getMessage());
-        }
-        return null;
-    }
-
-    private static PropertyMap getProfileProperties(GameProfile profile) {
-        if (profile == null) return createEmptyPropertyMap();
-        try {
-            if (gameProfilePropertiesMethod != null) {
-                return (PropertyMap) gameProfilePropertiesMethod.invoke(profile);
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get profile properties: {0}", e.getMessage());
-        }
-        return createEmptyPropertyMap();
-    }
-
-    private static ServerLevel getServerLevel(ServerPlayer player) {
-        if (player == null) return null;
-        try {
-            if (serverPlayerLevelMethod != null) {
-                return (ServerLevel) serverPlayerLevelMethod.invoke(player);
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to get server level: {0}", e.getMessage());
-        }
-        return null;
-    }
-
-    private static GameProfile createGameProfileWithProperties(UUID uuid, String name, PropertyMap properties) {
-        try {
-            if (gameProfileConstructorWithProps != null) {
-                return (GameProfile) gameProfileConstructorWithProps.newInstance(uuid, name, properties);
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to create GameProfile with properties: {0}", e.getMessage());
-        }
-        // 无法创建带属性的 GameProfile，返回基本的 GameProfile
-        return new GameProfile(uuid, name, properties);
-    }
-
-    private static PropertyMap createEmptyPropertyMap() {
-        try {
-            if (propertyMapConstructor != null) {
-                return (PropertyMap) propertyMapConstructor.newInstance(ImmutableMultimap.of());
-            }
-        } catch (ReflectiveOperationException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to create empty PropertyMap: {0}", e.getMessage());
-        }
-        return null;
-    }
-    
     public NpcImpl(NpcData data) {
         super(data);
         this.localName = generateLocalName();
         this.uuid = UUID.randomUUID();
         
-        // 注册可见性变化监听器，用于维护 tickable 索引
+        // 注册可见性变化监听器
         addVisibilityChangeListener(this::onVisibilityChange);
     }
     
     /**
      * 可见性变化回调
-     * 当有玩家变为可见时添加到 tickable 索引，当无可见玩家时从索引移除
      */
-    @SuppressWarnings("java:S1172") // 参数由接口契约要求，部分参数未使用是预期行为
+    @SuppressWarnings("java:S1172")
     private void onVisibilityChange(Npc _npc, Player _player, boolean visible, int visiblePlayerCount) {
         WooNPC plugin = WooNPC.getInstance();
         if (plugin == null) return;
@@ -247,12 +109,17 @@ public class NpcImpl extends Npc {
         UUID npcId = UUID.fromString(data.getId());
 
         if (visible) {
-            // 有玩家变为可见，添加到 tickable 索引
             plugin.getNpcManager().addToTickableIndex(npcId);
         } else if (visiblePlayerCount == 0) {
-            // 无可见玩家，从 tickable 索引移除
             plugin.getNpcManager().removeFromTickableIndex(npcId);
         }
+    }
+    
+    /**
+     * 获取版本适配器
+     */
+    private VersionAdapter getAdapter() {
+        return VersionAdapterFactory.getAdapter();
     }
     
     @Override
@@ -272,141 +139,95 @@ public class NpcImpl extends Npc {
             throw new IllegalStateException("NPC world is null for: " + data.getName());
         }
         
-        MinecraftServer minecraftServer = ((CraftServer) Bukkit.getServer()).getServer();
-        ServerLevel serverLevel = ((CraftWorld) bukkitWorld).getHandle();
-        GameProfile gameProfile = new GameProfile(uuid, localName);
+        // 分配实体 ID（使用负数避免与真实实体冲突）
+        this.entityId = ENTITY_ID_GENERATOR.decrementAndGet();
         
-        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
-            npc = new ServerPlayer(minecraftServer, serverLevel, 
-                    new GameProfile(uuid, ""), ClientInformation.createDefault());
-            ((ServerPlayer) npc).gameProfile = gameProfile;
-        } else {
-            Optional<Holder.Reference<EntityType<?>>> entityTypeReference = 
-                    BuiltInRegistries.ENTITY_TYPE.get(CraftNamespacedKey.toMinecraft(data.getType().getKey()));
-            if (entityTypeReference.isPresent()) {
-                EntityType<?> nmsType = entityTypeReference.get().value();
-                try {
-                    EntityType.EntityFactory<?> factory = getFactory(nmsType);
-                    if (factory != null) {
-                        npc = createEntityFromFactory(factory, nmsType, serverLevel);
-                    } else {
-                        npc = nmsType.create(serverLevel, EntitySpawnReason.COMMAND);
-                    }
-                } catch (Exception e) {
-                    npc = nmsType.create(serverLevel, EntitySpawnReason.COMMAND);
-                }
-                isTeamCreated.clear();
-            }
+        // 创建 GameProfile（用于玩家型 NPC）
+        this.gameProfile = new GameProfile(uuid, localName);
+        
+        // 设置初始朝向
+        if (location != null) {
+            this.currentYaw = location.getYaw();
+            this.currentPitch = location.getPitch();
         }
+        
+        // 清除团队状态
+        isTeamCreated.clear();
     }
     
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private net.minecraft.world.entity.Entity createEntityFromFactory(EntityType.EntityFactory<?> factory, EntityType<?> type, ServerLevel level) {
-        return ((EntityType.EntityFactory) factory).create(type, level);
-    }
-    
-    private EntityType.EntityFactory<?> getFactory(EntityType<?> entityType) {
-        try {
-            Field factoryField = EntityType.class.getDeclaredField("factory");
-            factoryField.setAccessible(true);
-            return (EntityType.EntityFactory<?>) factoryField.get(entityType);
-        } catch (ReflectiveOperationException e) {
-            return null;
+    /**
+     * 应用皮肤到 GameProfile
+     * 使用 VersionAdapter 提供的方法
+     */
+    private GameProfile applySkinToProfile(GameProfile profile, String value, String signature) {
+        VersionAdapter adapter = getAdapter();
+        UUID profileId = adapter.getProfileId(profile);
+        String profileName = adapter.getProfileName(profile);
+        
+        if (value == null || value.isEmpty()) {
+            return new GameProfile(profileId != null ? profileId : uuid, profileName);
         }
-    }
-
-    private void applySkin(ServerPlayer npcPlayer, String value, String signature) {
-        try {
-            if (value == null || value.isEmpty()) {
-                // 清除皮肤：创建空的 PropertyMap
-                PropertyMap propertyMap = createEmptyPropertyMap();
-                if (propertyMap != null) {
-                    npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
-                } else {
-                    // 如果无法创建空的 PropertyMap，使用基本的 GameProfile
-                    npcPlayer.gameProfile = new GameProfile(uuid, localName);
-                }
-            } else {
-                // 设置皮肤
-                PropertyMap propertyMap = new PropertyMap(
-                        ImmutableMultimap.of(
-                                "textures",
-                                new Property("textures", value, signature)
-                        )
-                );
-                npcPlayer.gameProfile = new GameProfile(uuid, localName, propertyMap);
-            }
-        } catch (Exception e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] 设置皮肤失败: {0}", e.getMessage());
-        }
+        
+        return adapter.createGameProfileWithSkin(
+                profileId != null ? profileId : uuid,
+                profileName,
+                value,
+                signature
+        );
     }
     
     @Override
     public void spawn(Player player) {
         ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
         
-        if (npc == null) {
+        // 检查世界
+        if (!data.getLocation().getWorld().getName().equalsIgnoreCase(player.getWorld().getName())) {
             return;
         }
         
-        ServerLevel playerLevel = getServerLevel(serverPlayer);
-        if (playerLevel == null) {
-            return;
-        }
-        
-        if (!data.getLocation().getWorld().getName().equalsIgnoreCase(playerLevel.getWorld().getName())) {
-            return;
-        }
-        
-        if (npc instanceof ServerPlayer npcPlayer) {
-            if (data.isSkinMirror()) {
-                PropertyMap viewerProperties = getProfileProperties(serverPlayer.getGameProfile());
-                String profileName = getProfileName(npcPlayer.getGameProfile());
-                UUID profileId = getProfileId(npcPlayer.getGameProfile());
-                GameProfile mirroredProfile = createGameProfileWithProperties(
-                        profileId != null ? profileId : uuid, profileName, viewerProperties);
-                npcPlayer.gameProfile = mirroredProfile;
-            } else if (data.getSkinValue() != null && !data.getSkinValue().isEmpty()) {
-                applySkin(npcPlayer, data.getSkinValue(), data.getSkinSignature());
-            }
-        }
-        
+        VersionAdapter adapter = getAdapter();
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
         
-        if (npc instanceof ServerPlayer npcPlayer) {
-            EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.noneOf(ClientboundPlayerInfoUpdatePacket.Action.class);
-            actions.add(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER);
-            actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME);
-            
-            if (data.isShowInTab()) {
-                actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
+        // 准备 GameProfile
+        GameProfile spawnProfile = this.gameProfile;
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            if (data.isSkinMirror()) {
+                // 镜像皮肤 - 使用 VersionAdapter 获取属性
+                PropertyMap viewerProperties = adapter.getProfileProperties(serverPlayer.getGameProfile());
+                spawnProfile = adapter.createGameProfileWithSkin(uuid, localName, 
+                        viewerProperties != null && !viewerProperties.isEmpty() 
+                                ? viewerProperties.get("textures").stream().findFirst().map(Property::value).orElse(null)
+                                : null,
+                        viewerProperties != null && !viewerProperties.isEmpty()
+                                ? viewerProperties.get("textures").stream().findFirst().map(Property::signature).orElse(null)
+                                : null
+                );
+            } else if (data.getSkinValue() != null && !data.getSkinValue().isEmpty()) {
+                // 自定义皮肤
+                spawnProfile = applySkinToProfile(this.gameProfile, data.getSkinValue(), data.getSkinSignature());
             }
-            
-            ClientboundPlayerInfoUpdatePacket playerInfoPacket = 
-                    new ClientboundPlayerInfoUpdatePacket(actions, getEntry(npcPlayer, serverPlayer));
-            packets.add(playerInfoPacket);
-            
-            npc.setPos(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
         }
         
-        ClientboundAddEntityPacket addEntityPacket = new ClientboundAddEntityPacket(
-                npc.getId(),
-                npc.getUUID(),
-                data.getLocation().x(),
-                data.getLocation().y(),
-                data.getLocation().z(),
-                data.getLocation().getPitch(),
-                data.getLocation().getYaw(),
-                npc.getType(),
-                0,
-                Vec3.ZERO,
-                data.getLocation().getYaw()
+        // 玩家型 NPC：先发送 PlayerInfoAdd
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            Packet<? super ClientGamePacketListener> playerInfoPacket = createPlayerInfoAddPacket(spawnProfile);
+            packets.add(playerInfoPacket);
+        }
+        
+        // 发送 AddEntity 数据包
+        Packet<? super ClientGamePacketListener> addEntityPacket = adapter.createAddEntityPacket(
+                entityId,
+                uuid,
+                data.getLocation(),
+                data.getType()
         );
         packets.add(addEntityPacket);
         
+        // 标记为可见
         isVisibleForPlayer.put(player.getUniqueId(), true);
         
-        if (!data.isShowInTab() && npc instanceof ServerPlayer) {
+        // 如果不在 Tab 显示，延迟移除 PlayerInfo
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER && !data.isShowInTab()) {
             org.bukkit.plugin.Plugin plugin = java.util.Objects.requireNonNull(
                     Bukkit.getPluginManager().getPlugin("WooNPC"), 
                     "WooNPC plugin instance cannot be null"
@@ -414,160 +235,164 @@ public class NpcImpl extends Npc {
             Bukkit.getScheduler().runTaskLater(
                     plugin,
                     () -> {
-                        ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 
-                                new ClientboundPlayerInfoRemovePacket(List.of(npc.getUUID()));
-                        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                                () -> serverPlayer.connection.send(playerInfoRemovePacket));
+                        Packet<?> playerInfoRemovePacket = adapter.createPlayerInfoRemovePacket(uuid);
+                        adapter.sendPacket(player, playerInfoRemovePacket);
                     },
                     1L
             );
         }
         
-        ClientboundBundlePacket bundlePacket = new ClientboundBundlePacket(packets);
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
+        // 发送数据包
+        adapter.sendPackets(player, packets);
         
+        // 更新实体数据
         update(player);
         
-        // 触发可见性变化事件（玩家变为可见）
+        // 触发可见性变化事件
         fireVisibilityChangeEvent(player, true);
+    }
+    
+    /**
+     * 创建玩家信息添加数据包
+     */
+    private Packet<? super ClientGamePacketListener> createPlayerInfoAddPacket(GameProfile profile) {
+        EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.noneOf(ClientboundPlayerInfoUpdatePacket.Action.class);
+        actions.add(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER);
+        actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME);
+        
+        if (data.isShowInTab()) {
+            actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
+        }
+        
+        Component displayName = Component.literal(localName);
+        ClientboundPlayerInfoUpdatePacket.Entry entry = createPlayerInfoEntry(profile, displayName);
+        
+        return new ClientboundPlayerInfoUpdatePacket(actions, List.of(entry));
+    }
+    
+    /**
+     * 创建玩家信息条目
+     */
+    private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntry(GameProfile profile, Component displayName) {
+        return new ClientboundPlayerInfoUpdatePacket.Entry(
+                uuid,
+                profile,
+                data.isShowInTab(),
+                0,
+                net.minecraft.world.level.GameType.SURVIVAL,
+                displayName,
+                true,
+                -1,
+                null
+        );
     }
     
     @Override
     public void remove(Player player) {
-        if (npc == null) {
-            return;
+        VersionAdapter adapter = getAdapter();
+        List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
+        
+        // 玩家型 NPC：移除 PlayerInfo
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            packets.add(adapter.createPlayerInfoRemovePacket(uuid));
         }
         
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        // 移除实体
+        packets.add(adapter.createRemoveEntityPacket(entityId));
         
-        if (npc instanceof ServerPlayer) {
-            ClientboundPlayerInfoRemovePacket playerInfoRemovePacket = 
-                    new ClientboundPlayerInfoRemovePacket(List.of(npc.getUUID()));
-            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                    () -> serverPlayer.connection.send(playerInfoRemovePacket));
+        // 移除坐骑
+        if (sittingVehicleId >= 0) {
+            packets.add(adapter.createRemoveEntityPacket(sittingVehicleId));
         }
         
-        ClientboundRemoveEntitiesPacket removeEntitiesPacket = new ClientboundRemoveEntitiesPacket(npc.getId());
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(removeEntitiesPacket));
+        adapter.sendPackets(player, packets);
         
-        if (sittingVehicle != null) {
-            ClientboundRemoveEntitiesPacket removeSittingVehiclePacket = 
-                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
-            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                    () -> serverPlayer.connection.send(removeSittingVehiclePacket));
-        }
+        boolean wasVisible = isVisibleForPlayer.getOrDefault(player.getUniqueId(), false);
+        isVisibleForPlayer.put(player.getUniqueId(), false);
         
-        boolean wasVisible = isVisibleForPlayer.getOrDefault(serverPlayer.getUUID(), false);
-        isVisibleForPlayer.put(serverPlayer.getUUID(), false);
-        
-        // 触发可见性变化事件（玩家变为不可见）
         if (wasVisible) {
-            fireVisibilityChangeEvent(serverPlayer.getBukkitEntity(), false);
+            fireVisibilityChangeEvent(player, false);
         }
     }
     
     @Override
     public void lookAt(Player player, Location location) {
-        if (npc == null) {
-            return;
-        }
+        VersionAdapter adapter = getAdapter();
         
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        // 更新当前朝向
+        this.currentYaw = location.getYaw();
+        this.currentPitch = location.getPitch();
         
-        npc.setRot(location.getYaw(), location.getPitch());
-        npc.setYHeadRot(location.getYaw());
-        npc.setXRot(location.getPitch());
-        npc.setYRot(location.getYaw());
-        
-        ClientboundTeleportEntityPacket teleportEntityPacket = new ClientboundTeleportEntityPacket(
-                npc.getId(),
-                new PositionMoveRotation(
-                        new Vec3(data.getLocation().getX(), data.getLocation().getY(), data.getLocation().getZ()),
-                        Vec3.ZERO,
-                        location.getYaw(),
-                        location.getPitch()
-                ),
-                Set.of(),
-                false
+        // 发送传送数据包
+        Packet<?> teleportPacket = adapter.createTeleportPacket(
+                entityId,
+                data.getLocation(),
+                location.getYaw(),
+                location.getPitch()
         );
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(teleportEntityPacket));
+        adapter.sendPacket(player, teleportPacket);
         
-        float angleMultiplier = 256f / 360f;
-        ClientboundRotateHeadPacket rotateHeadPacket = 
-                new ClientboundRotateHeadPacket(npc, (byte) (location.getYaw() * angleMultiplier));
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(rotateHeadPacket));
+        // 发送头部旋转数据包
+        Packet<?> rotateHeadPacket = adapter.createRotateHeadPacket(entityId, location.getYaw());
+        adapter.sendPacket(player, rotateHeadPacket);
     }
     
     @Override
     public void update(Player player, boolean swingArm) {
-        if (npc == null) {
-            return;
-        }
-        
         if (!isVisibleForPlayer.getOrDefault(player.getUniqueId(), false)) {
             return;
         }
         
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
-        
+        VersionAdapter adapter = getAdapter();
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
         
+        // 处理显示名称
         String displayNameStr = PlaceholderUtil.setPlaceholder(player, data.getDisplayName());
         net.kyori.adventure.text.Component displayName = ColorUtil.toComponent(displayNameStr);
         Component vanillaComponent = PaperAdventure.asVanilla(displayName);
         
-        if (!(npc instanceof ServerPlayer)) {
-            npc.setCustomName(vanillaComponent);
-            npc.setCustomNameVisible(true);
-        } else {
-            npc.setCustomName(null);
-            npc.setCustomNameVisible(false);
-        }
-        
+        // 处理团队（用于发光和名称标签）
         GlowingColor glowingColor = data.getGlowingColor();
         boolean isGlowing = data.isGlowing();
         boolean shouldCreateTeam = !glowingColor.isDisabled() || !data.getDisplayName().equalsIgnoreCase("<empty>");
         
         if (shouldCreateTeam) {
-            // 使用 UUID 作为 Team 名称的一部分，确保唯一性
             String teamName = "npc-" + uuid.toString().substring(0, 8);
-            PlayerTeam team = new PlayerTeam(new Scoreboard(), teamName);
-            team.getPlayers().clear();
-            team.getPlayers().add(npc instanceof ServerPlayer npcPlayer 
-                    ? getProfileName(npcPlayer.getGameProfile())
-                    : npc.getStringUUID());
+            String teamMember = data.getType() == org.bukkit.entity.EntityType.PLAYER 
+                    ? localName 
+                    : uuid.toString();
             
-            // 只有在发光启用时才设置团队颜色
-            if (isGlowing && !glowingColor.isDisabled() && glowingColor.getAdventureColor() != null) {
-                team.setColor(PaperAdventure.asVanilla(glowingColor.getAdventureColor()));
-            } else {
-                team.setColor(net.minecraft.ChatFormatting.WHITE);
+            org.bukkit.ChatColor teamColor = org.bukkit.ChatColor.WHITE;
+            if (isGlowing && !glowingColor.isDisabled()) {
+                // 使用 GlowingColor 的配置名称转换为 Bukkit ChatColor
+                String configName = glowingColor.getConfigName();
+                // 将配置名称转换为大写，并替换下划线（如 dark_blue -> DARK_BLUE）
+                String chatColorName = configName.toUpperCase();
+                try {
+                    teamColor = org.bukkit.ChatColor.valueOf(chatColorName);
+                } catch (IllegalArgumentException e) {
+                    teamColor = org.bukkit.ChatColor.WHITE;
+                }
             }
             
-            if (data.getDisplayName().equalsIgnoreCase("<empty>")) {
-                team.setNameTagVisibility(Team.Visibility.NEVER);
-                npc.setCustomName(null);
-                npc.setCustomNameVisible(false);
-            } else {
-                team.setNameTagVisibility(Team.Visibility.ALWAYS);
-            }
+            Team.Visibility nameTagVisibility = data.getDisplayName().equalsIgnoreCase("<empty>") 
+                    ? Team.Visibility.NEVER 
+                    : Team.Visibility.ALWAYS;
             
-            team.setCollisionRule(Team.CollisionRule.NEVER);
-            
-            if (npc instanceof ServerPlayer npcPlayer) {
-                team.setPlayerPrefix(vanillaComponent);
-                npcPlayer.listName = vanillaComponent;
-            }
-            
-            boolean isTeamCreatedForPlayer = this.isTeamCreated.getOrDefault(player.getUniqueId(), false);
-            packets.add(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, !isTeamCreatedForPlayer));
+            Packet<? super ClientGamePacketListener> teamPacket = adapter.createTeamPacket(
+                    teamName,
+                    teamMember,
+                    teamColor,
+                    !isTeamCreated.getOrDefault(player.getUniqueId(), false),
+                    Team.CollisionRule.NEVER,
+                    nameTagVisibility
+            );
+            packets.add(teamPacket);
             isTeamCreated.put(player.getUniqueId(), true);
         }
         
-        if (npc instanceof ServerPlayer npcPlayer) {
+        // 玩家型 NPC：更新 PlayerInfo
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = 
                     EnumSet.noneOf(ClientboundPlayerInfoUpdatePacket.Action.class);
             actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME);
@@ -576,60 +401,62 @@ public class NpcImpl extends Npc {
                 actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
             }
             
-            ClientboundPlayerInfoUpdatePacket playerInfoPacket = 
-                    new ClientboundPlayerInfoUpdatePacket(actions, getEntry(npcPlayer, serverPlayer));
-            packets.add(playerInfoPacket);
-        }
-        
-        npc.setGlowingTag(data.isGlowing() && !glowingColor.isDisabled());
-        
-        List<Pair<EquipmentSlot, ItemStack>> equipmentList = new ArrayList<>();
-        if (data.getEquipment() != null) {
-            for (Map.Entry<NpcEquipmentSlot, org.bukkit.inventory.ItemStack> entry : data.getEquipment().entrySet()) {
-                equipmentList.add(new Pair<>(
-                        EquipmentSlot.byName(entry.getKey().getNmsName()),
-                        CraftItemStack.asNMSCopy(entry.getValue())
-                ));
+            GameProfile profile = this.gameProfile;
+            if (data.isSkinMirror()) {
+                ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+                PropertyMap viewerProperties = adapter.getProfileProperties(serverPlayer.getGameProfile());
+                profile = adapter.createGameProfileWithSkin(uuid, localName,
+                        viewerProperties != null && !viewerProperties.isEmpty()
+                                ? viewerProperties.get("textures").stream().findFirst().map(Property::value).orElse(null)
+                                : null,
+                        viewerProperties != null && !viewerProperties.isEmpty()
+                                ? viewerProperties.get("textures").stream().findFirst().map(Property::signature).orElse(null)
+                                : null
+                );
             }
+            
+            ClientboundPlayerInfoUpdatePacket.Entry entry = createPlayerInfoEntry(profile, vanillaComponent);
+            packets.add(new ClientboundPlayerInfoUpdatePacket(actions, List.of(entry)));
         }
         
-        if (!equipmentList.isEmpty()) {
-            ClientboundSetEquipmentPacket setEquipmentPacket = 
-                    new ClientboundSetEquipmentPacket(npc.getId(), equipmentList);
-            packets.add(setEquipmentPacket);
+        // 发送装备
+        if (data.getEquipment() != null && !data.getEquipment().isEmpty()) {
+            Map<EquipmentSlot, org.bukkit.inventory.ItemStack> equipment = new HashMap<>();
+            for (Map.Entry<NpcEquipmentSlot, org.bukkit.inventory.ItemStack> entry : data.getEquipment().entrySet()) {
+                equipment.put(EquipmentSlot.byName(entry.getKey().getNmsName()), entry.getValue());
+            }
+            packets.add(adapter.createSetEquipmentPacket(entityId, equipment));
         }
         
-        if (npc instanceof ServerPlayer) {
-            npc.getEntityData().set(
-                    net.minecraft.world.entity.player.Player.DATA_PLAYER_MODE_CUSTOMISATION, 
-                    (byte) (0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40)
-            );
-        }
-        
+        // 更新实体数据
         refreshEntityData(player);
         
+        // 移动
         if (data.getLocation() != null) {
             move(player, swingArm);
         }
         
+        // 坐姿
         if ("sitting".equals(data.getPose())) {
-            setSitting(serverPlayer);
-        } else if (sittingVehicle != null) {
-            ClientboundRemoveEntitiesPacket removeSittingVehiclePacket = 
-                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
-            packets.add(removeSittingVehiclePacket);
+            setSitting(player);
+        } else if (sittingVehicleId >= 0) {
+            packets.add(adapter.createRemoveEntityPacket(sittingVehicleId));
+            sittingVehicleId = -1;
         }
         
-        if (npc instanceof LivingEntity) {
-            // Apply scale attribute
-            applyScale();
+        // 发送数据包
+        if (!packets.isEmpty()) {
+            adapter.sendPackets(player, packets);
         }
-        
-        // Apply effects
-        applyEffects();
-        
-        ClientboundBundlePacket bundlePacket = new ClientboundBundlePacket(packets);
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), () -> serverPlayer.connection.send(bundlePacket));
+    }
+    
+    /**
+     * 更新实体数据
+     * 使用 EntityMetadata 构建完整的实体元数据
+     */
+    private List<SynchedEntityData.DataValue<?>> buildEntityDataValues() {
+        // 使用 EntityMetadata 构建元数据
+        return EntityMetadata.buildMetadata(data, entityId);
     }
     
     @Override
@@ -638,148 +465,67 @@ public class NpcImpl extends Npc {
             return;
         }
         
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        VersionAdapter adapter = getAdapter();
         
-        SynchedEntityData.DataItem<?>[] itemsById = getItemsById(npc.getEntityData());
-        List<SynchedEntityData.DataValue<?>> entityData = new ArrayList<>();
-        for (SynchedEntityData.DataItem<?> dataItem : itemsById) {
-            entityData.add(dataItem.value());
-        }
+        // 获取实体数据项
+        List<SynchedEntityData.DataValue<?>> dataItems = buildEntityDataValues();
         
-        ClientboundSetEntityDataPacket setEntityDataPacket = 
-                new ClientboundSetEntityDataPacket(npc.getId(), entityData);
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(setEntityDataPacket));
-    }
-    
-    private SynchedEntityData.DataItem<?>[] getItemsById(SynchedEntityData synchedEntityData) {
-        try {
-            Field itemsByIdField = SynchedEntityData.class.getDeclaredField("itemsById");
-            itemsByIdField.setAccessible(true);
-            return (SynchedEntityData.DataItem<?>[]) itemsByIdField.get(synchedEntityData);
-        } catch (ReflectiveOperationException e) {
-            return new SynchedEntityData.DataItem<?>[0];
+        if (!dataItems.isEmpty()) {
+            Packet<?> setEntityDataPacket = adapter.createSetEntityDataPacket(entityId, dataItems);
+            adapter.sendPacket(player, setEntityDataPacket);
         }
     }
     
     @Override
     public void move(Player player, boolean swingArm) {
-        if (npc == null) {
-            return;
+        VersionAdapter adapter = getAdapter();
+        
+        // 更新当前朝向
+        if (data.getLocation() != null) {
+            this.currentYaw = data.getLocation().getYaw();
+            this.currentPitch = data.getLocation().getPitch();
         }
         
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
-        
-        npc.setPosRaw(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
-        npc.setRot(data.getLocation().getYaw(), data.getLocation().getPitch());
-        npc.setYHeadRot(data.getLocation().getYaw());
-        npc.setXRot(data.getLocation().getPitch());
-        npc.setYRot(data.getLocation().getYaw());
-        
-        ClientboundTeleportEntityPacket teleportEntityPacket = new ClientboundTeleportEntityPacket(
-                npc.getId(),
-                new PositionMoveRotation(
-                        new Vec3(data.getLocation().getX(), data.getLocation().getY(), data.getLocation().getZ()),
-                        Vec3.ZERO,
-                        data.getLocation().getYaw(),
-                        data.getLocation().getPitch()
-                ),
-                Set.of(),
-                false
+        // 发送传送数据包
+        Packet<?> teleportPacket = adapter.createTeleportPacket(
+                entityId,
+                data.getLocation(),
+                currentYaw,
+                currentPitch
         );
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(teleportEntityPacket));
+        adapter.sendPacket(player, teleportPacket);
         
-        float angleMultiplier = 256f / 360f;
-        ClientboundRotateHeadPacket rotateHeadPacket = 
-                new ClientboundRotateHeadPacket(npc, (byte) (data.getLocation().getYaw() * angleMultiplier));
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(rotateHeadPacket));
+        // 发送头部旋转数据包
+        Packet<?> rotateHeadPacket = adapter.createRotateHeadPacket(entityId, currentYaw);
+        adapter.sendPacket(player, rotateHeadPacket);
         
-        if (swingArm && npc instanceof ServerPlayer) {
-            ClientboundAnimatePacket animatePacket = new ClientboundAnimatePacket(npc, 0);
-            runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                    () -> serverPlayer.connection.send(animatePacket));
+        // 挥动手臂
+        if (swingArm && data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            Packet<?> animatePacket = adapter.createAnimatePacket(entityId, 0);
+            adapter.sendPacket(player, animatePacket);
         }
     }
     
-    private ClientboundPlayerInfoUpdatePacket.Entry getEntry(ServerPlayer npcPlayer, ServerPlayer viewer) {
-        GameProfile profile = npcPlayer.getGameProfile();
-        
-        if (data.isSkinMirror()) {
-            String profileName = getProfileName(profile);
-            UUID profileId = getProfileId(profile);
-            PropertyMap viewerProperties = getProfileProperties(viewer.getGameProfile());
-            profile = createGameProfileWithProperties(profileId != null ? profileId : uuid, profileName, viewerProperties);
-        }
-        
-        return createPlayerInfoEntry(npcPlayer, profile);
-    }
-    
-    private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntry(ServerPlayer npcPlayer, GameProfile profile) {
-        try {
-            return new ClientboundPlayerInfoUpdatePacket.Entry(
-                    npcPlayer.getUUID(),
-                    profile,
-                    data.isShowInTab(),
-                    0,
-                    npcPlayer.gameMode.getGameModeForPlayer(),
-                    npcPlayer.getTabListDisplayName(),
-                    true,
-                    -1,
-                    Optionull.map(npcPlayer.getChatSession(), RemoteChatSession::asData)
-            );
-        } catch (RuntimeException e) {
-            return createPlayerInfoEntryFallback(npcPlayer, profile);
-        }
-    }
-
-    private ClientboundPlayerInfoUpdatePacket.Entry createPlayerInfoEntryFallback(ServerPlayer npcPlayer, GameProfile profile) {
-        try {
-            if (playerInfoEntryConstructor != null) {
-                Class<?>[] paramTypes = playerInfoEntryConstructor.getParameterTypes();
-                Object[] args = new Object[paramTypes.length];
-                args[0] = npcPlayer.getUUID();
-                args[1] = profile;
-                args[2] = data.isShowInTab();
-                args[3] = 0;
-                args[4] = npcPlayer.gameMode.getGameModeForPlayer();
-                args[5] = npcPlayer.getTabListDisplayName();
-                if (paramTypes.length > 6) {
-                    args[6] = true;
-                }
-                if (paramTypes.length > 7) {
-                    args[7] = -1;
-                }
-                if (paramTypes.length > 8) {
-                    args[8] = Optionull.map(npcPlayer.getChatSession(), RemoteChatSession::asData);
-                }
-                return (ClientboundPlayerInfoUpdatePacket.Entry) playerInfoEntryConstructor.newInstance(args);
-            }
-        } catch (ReflectiveOperationException ex) {
-            // 忽略反射异常
-        }
-        return null;
-    }
-    
-    private void setSitting(ServerPlayer serverPlayer) {
-        if (npc == null) {
-            return;
-        }
-        
-        if (sittingVehicle == null) {
+    /**
+     * 设置坐姿
+     */
+    private void setSitting(Player player) {
+        if (sittingVehicleId < 0) {
+            // 创建坐骑实体 ID
+            sittingVehicleId = ENTITY_ID_GENERATOR.decrementAndGet();
+            
             sittingVehicle = new Display.TextDisplay(
                     EntityType.TEXT_DISPLAY, 
                     ((CraftWorld) data.getLocation().getWorld()).getHandle()
             );
         }
         
-        sittingVehicle.setPos(data.getLocation().x(), data.getLocation().y(), data.getLocation().z());
+        VersionAdapter adapter = getAdapter();
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
         
-        ServerLevel level = getServerLevel(serverPlayer);
-        if (level == null) {
-            return;
-        }
+        // 发送坐骑实体
+        ServerLevel level = adapter.getServerLevel(serverPlayer);
+        if (level == null) return;
         
         ServerEntity serverEntity = new ServerEntity(
                 level,
@@ -791,28 +537,26 @@ public class NpcImpl extends Npc {
         );
         
         ClientboundAddEntityPacket addEntityPacket = new ClientboundAddEntityPacket(sittingVehicle, serverEntity);
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(addEntityPacket));
+        adapter.sendPacket(player, addEntityPacket);
         
-        sittingVehicle.passengers = ImmutableList.of(npc);
-        
+        // 设置乘客
         ClientboundSetPassengersPacket packet = new ClientboundSetPassengersPacket(sittingVehicle);
-        runOnPlayerScheduler(serverPlayer.getBukkitEntity(), 
-                () -> serverPlayer.connection.send(packet));
+        adapter.sendPacket(player, packet);
     }
     
     @Override
     public float getEyeHeight() {
-        return npc != null ? npc.getEyeHeight() : 1.62f;
+        // 根据实体类型返回默认眼睛高度
+        if (data.getType() == org.bukkit.entity.EntityType.PLAYER) {
+            return 1.62f;
+        }
+        // 其他实体类型的默认高度
+        return 1.0f;
     }
     
     @Override
     public int getEntityId() {
-        return npc != null ? npc.getId() : -1;
-    }
-    
-    public Entity getNmsEntity() {
-        return npc;
+        return entityId;
     }
     
     public UUID getNpcUuid() {
@@ -834,142 +578,35 @@ public class NpcImpl extends Npc {
         updateForAll();
     }
     
-    private static EntityDataAccessor<Pose> DATA_POSE_ACCESSOR = null;
-    
     public void setPose(NpcPose pose) {
-        if (npc == null) {
-            return;
-        }
-        
         if (pose == NpcPose.SITTING) {
             setSittingState(true);
         } else {
             setSittingState(false);
-            setEntityPose(Pose.valueOf(pose.name()));
         }
         
         data.setPose(pose.getConfigName());
         updateForAll();
     }
     
-    private void setEntityPose(Pose pose) {
-        if (npc == null) {
-            return;
-        }
-        
-        try {
-            if (DATA_POSE_ACCESSOR == null) {
-                Field dataPoseField = Entity.class.getDeclaredField("DATA_POSE");
-                dataPoseField.setAccessible(true);
-                @SuppressWarnings("unchecked")
-                EntityDataAccessor<Pose> accessor = (EntityDataAccessor<Pose>) dataPoseField.get(null);
-                DATA_POSE_ACCESSOR = accessor;
-            }
-
-            npc.getEntityData().set(DATA_POSE_ACCESSOR, pose);
-        } catch (ReflectiveOperationException e) {
-            try {
-                npc.setPose(pose);
-            } catch (RuntimeException ignored) {
-                // 设置姿势失败，忽略
-            }
-        }
-    }
-    
     private void setSittingState(boolean sitting) {
-        if (!sitting) {
-            if (sittingVehicle != null) {
-                for (Map.Entry<UUID, Boolean> entry : isVisibleForPlayer.entrySet()) {
-                    if (entry.getValue()) {
-                        Player player = Bukkit.getPlayer(entry.getKey());
-                        if (player != null) {
-                            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
-                            ClientboundRemoveEntitiesPacket removePacket = 
-                                    new ClientboundRemoveEntitiesPacket(sittingVehicle.getId());
-                            runOnPlayerScheduler(player, 
-                                    () -> serverPlayer.connection.send(removePacket));
-                        }
+        if (!sitting && sittingVehicleId >= 0) {
+            VersionAdapter adapter = getAdapter();
+            for (Map.Entry<UUID, Boolean> entry : isVisibleForPlayer.entrySet()) {
+                if (entry.getValue()) {
+                    Player player = Bukkit.getPlayer(entry.getKey());
+                    if (player != null) {
+                        adapter.sendPacket(player, adapter.createRemoveEntityPacket(sittingVehicleId));
                     }
                 }
-                sittingVehicle = null;
             }
+            sittingVehicleId = -1;
+            sittingVehicle = null;
         }
     }
     
     public NpcPose getPose() {
         return NpcPose.fromConfigName(data.getPose());
-    }
-    
-    private void applyScale() {
-        if (!(npc instanceof LivingEntity)) {
-            return;
-        }
-        
-        float scale = data.getScale();
-        if (scale == 1.0f) {
-            return;
-        }
-        
-        try {
-            Holder.Reference<net.minecraft.world.entity.ai.attributes.Attribute> scaleAttribute = 
-                    BuiltInRegistries.ATTRIBUTE.get(ResourceKey.create(net.minecraft.core.registries.Registries.ATTRIBUTE, 
-                            CraftNamespacedKey.toMinecraft(org.bukkit.NamespacedKey.minecraft("scale")))).get();
-            
-            if (scaleAttribute != null) {
-                net.minecraft.world.entity.ai.attributes.AttributeInstance attributeInstance = 
-                        new net.minecraft.world.entity.ai.attributes.AttributeInstance(scaleAttribute, (a) -> {});
-                attributeInstance.setBaseValue(scale);
-                
-                ClientboundUpdateAttributesPacket updateAttributesPacket = 
-                        new ClientboundUpdateAttributesPacket(npc.getId(), List.of(attributeInstance));
-                
-                for (Map.Entry<UUID, Boolean> entry : isVisibleForPlayer.entrySet()) {
-                    if (entry.getValue()) {
-                        Player player = Bukkit.getPlayer(entry.getKey());
-                        if (player != null) {
-                            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
-                            runOnPlayerScheduler(player, 
-                                    () -> serverPlayer.connection.send(updateAttributesPacket));
-                        }
-                    }
-                }
-            }
-        } catch (RuntimeException e) {
-            Bukkit.getLogger().log(java.util.logging.Level.WARNING, "[WooNPC] Failed to apply scale: {0}", e.getMessage());
-        }
-    }
-
-    private void applyEffects() {
-        Set<NpcEffect> effects = data.getEffects();
-        if (effects.isEmpty()) {
-            return;
-        }
-
-        for (NpcEffect effect : effects) {
-            switch (effect) {
-                case ON_FIRE -> npc.setSharedFlagOnFire(true);
-                case INVISIBLE -> npc.setInvisible(true);
-                case SHAKING -> npc.setTicksFrozen(npc.getTicksRequiredToFreeze());
-                case SILENT -> npc.setSilent(true);
-            }
-        }
-    }
-    
-    private void runOnPlayerScheduler(Player player, Runnable task) {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            org.bukkit.plugin.Plugin plugin = java.util.Objects.requireNonNull(
-                    Bukkit.getPluginManager().getPlugin("WooNPC"),
-                    "WooNPC plugin instance cannot be null"
-            );
-            player.getScheduler().run(
-                    plugin,
-                    (t) -> task.run(),
-                    null
-            );
-        } catch (ClassNotFoundException e) {
-            task.run();
-        }
     }
     
     @Override
@@ -1007,119 +644,7 @@ public class NpcImpl extends Npc {
             return false;
         }
         
-        try {
-            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
-            return isChunkSentToClient(serverPlayer, chunkX, chunkZ);
-        } catch (RuntimeException e) {
-            return true;
-        }
-    }
-
-    private boolean isChunkSentToClient(ServerPlayer serverPlayer, int chunkX, int chunkZ) {
-        try {
-            long chunkKey = chunkX & 0xFFFFFFFFL | ((long) chunkZ & 0xFFFFFFFFL) << 32;
-
-            UUID playerId = serverPlayer.getUUID();
-            Map<Long, Boolean> playerCache = chunkVisibilityCache.get(playerId);
-
-            if (playerCache != null) {
-                Boolean cached = playerCache.get(chunkKey);
-                if (cached != null) {
-                    return cached;
-                }
-            }
-
-            boolean isVisible = checkChunkSentNMS(serverPlayer, chunkX, chunkZ);
-
-            chunkVisibilityCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>())
-                    .put(chunkKey, isVisible);
-
-            cacheInvalidationCounter++;
-            if (cacheInvalidationCounter >= CACHE_INVALIDATION_INTERVAL) {
-                cacheInvalidationCounter = 0;
-                invalidateChunkCache(playerId);
-            }
-
-            return isVisible;
-        } catch (RuntimeException e) {
-            return true;
-        }
-    }
-    
-    private boolean checkChunkSentNMS(ServerPlayer serverPlayer, int chunkX, int chunkZ) {
-        try {
-            net.minecraft.server.level.ServerLevel serverLevel = getServerLevel(serverPlayer);
-            if (serverLevel == null) {
-                return true;
-            }
-
-            java.lang.reflect.Method getChunkProviderMethod = net.minecraft.server.level.ServerLevel.class.getMethod("getChunkProvider");
-            Object chunkProvider = getChunkProviderMethod.invoke(serverLevel);
-
-            if (chunkProvider == null) {
-                return true;
-            }
-
-            Class<?> chunkProviderClass = chunkProvider.getClass();
-            java.lang.reflect.Field chunkMapField = null;
-
-            try {
-                chunkMapField = chunkProviderClass.getDeclaredField("chunkMap");
-            } catch (NoSuchFieldException e) {
-                for (java.lang.reflect.Field field : chunkProviderClass.getDeclaredFields()) {
-                    if (field.getType().getName().contains("ChunkMap")) {
-                        chunkMapField = field;
-                        break;
-                    }
-                }
-            }
-
-            if (chunkMapField == null) {
-                return true;
-            }
-
-            chunkMapField.setAccessible(true);
-            Object chunkMap = chunkMapField.get(chunkProvider);
-
-            if (chunkMap == null) {
-                return true;
-            }
-
-            Class<?> chunkMapClass = chunkMap.getClass();
-            java.lang.reflect.Method getPlayersMethod = null;
-
-            try {
-                getPlayersMethod = chunkMapClass.getMethod("getPlayers", int.class, int.class, boolean.class);
-            } catch (NoSuchMethodException e) {
-                for (java.lang.reflect.Method method : chunkMapClass.getMethods()) {
-                    if (method.getName().equals("getPlayers") && method.getParameterCount() == 3) {
-                        getPlayersMethod = method;
-                        break;
-                    }
-                }
-            }
-
-            if (getPlayersMethod == null) {
-                return true;
-            }
-
-            Object players = getPlayersMethod.invoke(chunkMap, chunkX, chunkZ, false);
-
-            if (players instanceof java.util.List<?> playerList) {
-                return playerList.contains(serverPlayer);
-            }
-
-            return true;
-        } catch (ReflectiveOperationException e) {
-            return true;
-        }
-    }
-    
-    private void invalidateChunkCache(UUID playerId) {
-        Map<Long, Boolean> playerCache = chunkVisibilityCache.get(playerId);
-        if (playerCache != null && playerCache.size() > 50) {
-            playerCache.clear();
-        }
+        return getAdapter().isChunkSentToClient(player, chunkX, chunkZ);
     }
     
     public void clearChunkVisibilityCache(UUID playerId) {
@@ -1130,4 +655,24 @@ public class NpcImpl extends Npc {
         chunkVisibilityCache.clear();
     }
 
+    /**
+     * 清理指定玩家的所有缓存数据
+     * 重写父类方法，额外清理 chunkVisibilityCache
+     *
+     * @param playerId 玩家 UUID
+     */
+    @Override
+    public void cleanupPlayer(UUID playerId) {
+        // 调用父类方法清理基础缓存
+        super.cleanupPlayer(playerId);
+
+        // 清理区块可见性缓存
+        chunkVisibilityCache.remove(playerId);
+
+        // 记录调试信息
+        if (WooNPC.getInstance() != null && WooNPC.getInstance().getConfigLoader().isDebug()) {
+            WooNPC.getInstance().getLogger().info(() -> "[NpcImpl] 已清理玩家缓存: " + playerId +
+                    ", NPC: " + data.getName());
+        }
+    }
 }

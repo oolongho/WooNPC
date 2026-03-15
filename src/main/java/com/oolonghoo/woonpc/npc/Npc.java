@@ -505,10 +505,45 @@ public abstract class Npc {
     
     /**
      * 获取待执行任务数量
-     * 
+     *
      * @return 待执行任务数量
      */
     public int getPendingTaskCount() {
         return pendingTasks.size();
+    }
+
+    /**
+     * 清理指定玩家的所有缓存数据
+     * 在玩家退出服务器时调用，防止内存泄漏
+     *
+     * @param playerId 玩家 UUID
+     */
+    public void cleanupPlayer(UUID playerId) {
+        // 清理 Team 创建状态
+        isTeamCreated.remove(playerId);
+
+        // 清理玩家可见性状态
+        isVisibleForPlayer.remove(playerId);
+
+        // 清理看向玩家状态
+        isLookingAtPlayer.remove(playerId);
+
+        // 清理最后交互时间
+        lastPlayerInteraction.remove(playerId);
+    }
+
+    /**
+     * 获取玩家缓存统计信息（用于调试）
+     *
+     * @return 缓存统计信息字符串
+     */
+    public String getPlayerCacheStats() {
+        return String.format(
+                "玩家缓存 [Team: %d, 可见性: %d, 看向: %d, 交互: %d]",
+                isTeamCreated.size(),
+                isVisibleForPlayer.size(),
+                isLookingAtPlayer.size(),
+                lastPlayerInteraction.size()
+        );
     }
 }

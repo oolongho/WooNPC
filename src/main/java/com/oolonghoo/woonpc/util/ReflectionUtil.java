@@ -11,7 +11,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 反射工具类
  * 提供缓存机制优化反射性能
- * o
+ * 
+ * <p><b>注意：</b>此类中的部分方法已被版本适配器替代。
+ * 对于 GameProfile 相关操作，建议使用 VersionAdapter 提供的方法。</p>
+ * 
+ * @see com.oolonghoo.woonpc.version.VersionAdapter
  */
 @SuppressWarnings("java:S3457")
 public final class ReflectionUtil {
