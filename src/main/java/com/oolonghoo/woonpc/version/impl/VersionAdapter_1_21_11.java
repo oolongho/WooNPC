@@ -28,6 +28,7 @@ import java.util.UUID;
  * @author oolongho
  * @since 1.0.0
  */
+@SuppressWarnings("java:S3457")
 public class VersionAdapter_1_21_11 extends AbstractVersionAdapter {
 
     @Override

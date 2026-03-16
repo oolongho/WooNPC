@@ -61,7 +61,7 @@ class VersionAdapterFactoryTest {
     @Test
     @DisplayName("重置工厂状态")
     void testReset() {
-        VersionAdapter adapter1 = VersionAdapterFactory.getAdapter("1.21.11");
+        VersionAdapterFactory.getAdapter("1.21.11");
         assertFalse(VersionAdapterFactory.isInitialized());
         
         VersionAdapterFactory.reset();
