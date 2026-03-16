@@ -81,11 +81,9 @@ public final class VersionUtil {
         String version = MIN_VERSION;
         try {
             // 优先使用 Bukkit 获取版本
-            if (Bukkit.getBukkitVersion() != null) {
-                Matcher matcher = VERSION_PATTERN.matcher(Bukkit.getBukkitVersion());
-                if (matcher.find()) {
-                    version = matcher.group(0);
-                }
+            Matcher matcher = VERSION_PATTERN.matcher(Bukkit.getBukkitVersion());
+            if (matcher.find()) {
+                version = matcher.group(0);
             }
         } catch (Exception e) {
             // 如果获取失败，使用默认值
