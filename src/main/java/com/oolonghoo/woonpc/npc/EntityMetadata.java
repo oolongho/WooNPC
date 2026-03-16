@@ -28,42 +28,17 @@ public class EntityMetadata {
 
     // Entity 基础属性
     private static EntityDataAccessor<Byte> DATA_SHARED_FLAGS_ID;
-    private static EntityDataAccessor<Integer> DATA_AIR_SUPPLY_ID;
     private static EntityDataAccessor<Optional<net.minecraft.network.chat.Component>> DATA_CUSTOM_NAME;
     private static EntityDataAccessor<Boolean> DATA_CUSTOM_NAME_VISIBLE;
     private static EntityDataAccessor<Boolean> DATA_SILENT;
-    private static EntityDataAccessor<Boolean> DATA_NO_GRAVITY;
     private static EntityDataAccessor<Pose> DATA_POSE;
     private static EntityDataAccessor<Integer> DATA_TICKS_FROZEN;
 
-    // LivingEntity 属性
-    private static EntityDataAccessor<Byte> DATA_LIVING_ENTITY_FLAGS;
-    private static EntityDataAccessor<Float> DATA_HEALTH_ID;
-    private static EntityDataAccessor<Integer> DATA_EFFECT_COLOR_ID;
-    private static EntityDataAccessor<Boolean> DATA_EFFECT_AMBIENCE_ID;
-    private static EntityDataAccessor<Integer> DATA_ARROW_COUNT_ID;
-    private static EntityDataAccessor<Integer> DATA_STINGER_COUNT_ID;
-    private static EntityDataAccessor<Optional<UUID>> DATA_SLEEPING_UUID_ID;
-
     // Player 属性
     private static EntityDataAccessor<Byte> DATA_PLAYER_MODE_CUSTOMISATION;
-    private static EntityDataAccessor<Integer> DATA_PLAYER_SCORE;
-    private static EntityDataAccessor<Boolean> DATA_PLAYER_MODEL_PARTS;
 
     // Display 实体属性 (1.19.4+)
     private static EntityDataAccessor<Float> DATA_SCALE;
-    private static EntityDataAccessor<Integer> DATA_INTERPOLATION_DURATION;
-    private static EntityDataAccessor<Integer> DATA_TRANSLATION;
-    private static EntityDataAccessor<Integer> DATA_SCALE_DEPRECATED;
-    private static EntityDataAccessor<Integer> DATA_LEFT_ROTATION;
-    private static EntityDataAccessor<Integer> DATA_RIGHT_ROTATION;
-    private static EntityDataAccessor<Byte> DATA_BILLBOARD_RENDER_CONSTRAINTS;
-    private static EntityDataAccessor<Integer> DATA_BRIGHTNESS_OVERRIDE;
-    private static EntityDataAccessor<Float> DATA_VIEW_RANGE;
-    private static EntityDataAccessor<Float> DATA_SHADOW_RADIUS;
-    private static EntityDataAccessor<Float> DATA_SHADOW_STRENGTH;
-    private static EntityDataAccessor<Float> DATA_WIDTH;
-    private static EntityDataAccessor<Float> DATA_HEIGHT;
     private static EntityDataAccessor<Integer> DATA_GLOW_COLOR_OVERRIDE;
 
     // ArmorStand 属性
@@ -75,23 +50,12 @@ public class EntityMetadata {
     // 实体标志位常量
     private static final byte FLAG_ON_FIRE = 0x01;
     private static final byte FLAG_SHIFT_KEY_DOWN = 0x02;
-    private static final byte FLAG_SPRINTING = 0x08;
-    private static final byte FLAG_SWIMMING = 0x10;
     private static final byte FLAG_INVISIBLE = 0x20;
     private static final byte FLAG_GLOWING = 0x40;
-    private static final byte FLAG_FALL_FLYING = (byte) 0x80;
-
-    // LivingEntity 标志位常量
-    private static final byte LIVING_FLAG_UNUSED = 0x01;
-    private static final byte LIVING_FLAG_IS_USING_ITEM = 0x02;
-    private static final byte LIVING_FLAG_OFF_HAND_ACTIVE = 0x04;
-    private static final byte LIVING_FLAG_SPIN_ATTACK = 0x08;
 
     // ArmorStand 标志位常量
     private static final byte ARMOR_STAND_FLAG_SMALL = 0x01;
     private static final byte ARMOR_STAND_FLAG_SHOW_ARMS = 0x04;
-    private static final byte ARMOR_STAND_FLAG_NO_BASE_PLATE = 0x08;
-    private static final byte ARMOR_STAND_FLAG_MARKER = (byte) 0x10;
 
     static {
         initAccessors();
@@ -107,28 +71,15 @@ public class EntityMetadata {
 
         // Entity 基础属性
         DATA_SHARED_FLAGS_ID = getAccessor(Entity.class, "DATA_SHARED_FLAGS_ID", "f_20094_");
-        DATA_AIR_SUPPLY_ID = getAccessor(Entity.class, "DATA_AIR_SUPPLY_ID", "f_19893_");
         DATA_CUSTOM_NAME = getAccessor(Entity.class, "DATA_CUSTOM_NAME", "f_19758_");
         DATA_CUSTOM_NAME_VISIBLE = getAccessor(Entity.class, "DATA_CUSTOM_NAME_VISIBLE", "f_19759_");
         DATA_SILENT = getAccessor(Entity.class, "DATA_SILENT", "f_19760_");
-        DATA_NO_GRAVITY = getAccessor(Entity.class, "DATA_NO_GRAVITY", "f_19761_");
         DATA_POSE = getAccessor(Entity.class, "DATA_POSE", "f_19762_");
         DATA_TICKS_FROZEN = getAccessor(Entity.class, "DATA_TICKS_FROZEN", "f_19763_");
-
-        // LivingEntity 属性
-        DATA_LIVING_ENTITY_FLAGS = getAccessor(LivingEntity.class, "DATA_LIVING_ENTITY_FLAGS", "f_20899_");
-        DATA_HEALTH_ID = getAccessor(LivingEntity.class, "DATA_HEALTH_ID", "f_20900_");
-        DATA_EFFECT_COLOR_ID = getAccessor(LivingEntity.class, "DATA_EFFECT_COLOR_ID", "f_20901_");
-        DATA_EFFECT_AMBIENCE_ID = getAccessor(LivingEntity.class, "DATA_EFFECT_AMBIENCE_ID", "f_20902_");
-        DATA_ARROW_COUNT_ID = getAccessor(LivingEntity.class, "DATA_ARROW_COUNT_ID", "f_20903_");
-        DATA_STINGER_COUNT_ID = getAccessor(LivingEntity.class, "DATA_STINGER_COUNT_ID", "f_20904_");
-        DATA_SLEEPING_UUID_ID = getAccessor(LivingEntity.class, "DATA_SLEEPING_UUID_ID", "f_20905_");
 
         // Player 属性
         DATA_PLAYER_MODE_CUSTOMISATION = getAccessor(net.minecraft.world.entity.player.Player.class,
                 "DATA_PLAYER_MODE_CUSTOMISATION", "f_35838_");
-        DATA_PLAYER_SCORE = getAccessor(net.minecraft.world.entity.player.Player.class,
-                "DATA_PLAYER_SCORE", "f_35839_");
 
         // ArmorStand 属性
         DATA_ARMOR_STAND_FLAGS = getAccessor(ArmorStand.class, "DATA_CLIENT_FLAGS", "f_31558_");
@@ -320,6 +271,7 @@ public class EntityMetadata {
     /**
      * 构建玩家特有属性
      */
+    @SuppressWarnings("java:S1172")
     private static void buildPlayerSpecific(NpcData data, List<SynchedEntityData.DataValue<?>> values) {
         if (DATA_PLAYER_MODE_CUSTOMISATION == null) return;
 
