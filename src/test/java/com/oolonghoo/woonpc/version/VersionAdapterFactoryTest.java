@@ -111,6 +111,7 @@ class VersionAdapterFactoryTest {
         assertNotNull(adapter21_6, "1.21.6 适配器不应为 null");
         assertNotNull(adapter21_7, "1.21.7 适配器不应为 null");
         assertNotNull(adapter21_8, "1.21.8 适配器不应为 null");
+        
         assertSame(adapter21_6.getClass(), adapter21_7.getClass(), 
                 "1.21.6, 1.21.7, 1.21.8 应该使用相同的适配器类");
         assertSame(adapter21_6.getClass(), adapter21_8.getClass(), 

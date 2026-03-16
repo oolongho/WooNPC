@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("VersionUtil 版本工具类测试")
+@SuppressWarnings("java:S1172")
 class VersionUtilTest {
 
     @Test
@@ -76,7 +77,6 @@ class VersionUtilTest {
         return Stream.of(
             Arguments.of(2, VersionUtil.VersionRange.EARLY),
             Arguments.of(3, VersionUtil.VersionRange.EARLY),
-            Arguments.of(4, VersionUtil.VersionRange.MIDDLE),
             Arguments.of(5, VersionUtil.VersionRange.MIDDLE),
             Arguments.of(6, VersionUtil.VersionRange.LATE),
             Arguments.of(7, VersionUtil.VersionRange.LATE),

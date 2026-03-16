@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author oolongho
  * @since 1.0.0
  */
+@SuppressWarnings({"java:S3457", "java:S1141"})
 public abstract class AbstractVersionAdapter implements VersionAdapter {
 
     // ==================== 反射缓存 ====================

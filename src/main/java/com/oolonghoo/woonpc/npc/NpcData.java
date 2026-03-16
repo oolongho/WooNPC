@@ -555,6 +555,9 @@ public class NpcData {
         
         // 位置
         String worldName = section.getString("location.world", "world");
+        if (worldName == null) {
+            worldName = "world";
+        }
         World world = Bukkit.getWorld(worldName);
         if (world == null) {
             List<World> worlds = Bukkit.getWorlds();
