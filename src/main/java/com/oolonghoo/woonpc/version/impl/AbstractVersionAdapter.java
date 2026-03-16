@@ -412,13 +412,35 @@ public abstract class AbstractVersionAdapter implements VersionAdapter {
                 packet = (ClientboundRotateHeadPacket) unsafe.allocateInstance(ClientboundRotateHeadPacket.class);
             }
             
-            // 设置 id 字段
-            Field idField = ClientboundRotateHeadPacket.class.getDeclaredField("id");
+            // 查找正确的字段名（可能是 id 或 entityId）
+            Field idField = null;
+            for (Field field : ClientboundRotateHeadPacket.class.getDeclaredFields()) {
+                if (field.getType() == int.class) {
+                    idField = field;
+                    break;
+                }
+            }
+            
+            if (idField == null) {
+                throw new NoSuchFieldException("Could not find entity id field in ClientboundRotateHeadPacket");
+            }
+            
             idField.setAccessible(true);
             idField.setInt(packet, entityId);
             
-            // 设置 yHeadRot 字段
-            Field yHeadRotField = ClientboundRotateHeadPacket.class.getDeclaredField("yHeadRot");
+            // 查找正确的字段名（可能是 yHeadRot 或 yRot）
+            Field yHeadRotField = null;
+            for (Field field : ClientboundRotateHeadPacket.class.getDeclaredFields()) {
+                if (field.getType() == byte.class) {
+                    yHeadRotField = field;
+                    break;
+                }
+            }
+            
+            if (yHeadRotField == null) {
+                throw new NoSuchFieldException("Could not find yHeadRot field in ClientboundRotateHeadPacket");
+            }
+            
             yHeadRotField.setAccessible(true);
             yHeadRotField.setByte(packet, (byte) (yaw * angleMultiplier));
             
