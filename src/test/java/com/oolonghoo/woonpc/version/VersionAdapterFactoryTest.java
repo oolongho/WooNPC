@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("VersionAdapterFactory 版本适配器工厂测试")
+@SuppressWarnings("java:S1607")
 class VersionAdapterFactoryTest {
 
     @BeforeEach
@@ -98,6 +99,8 @@ class VersionAdapterFactoryTest {
         VersionAdapter adapter21_2 = VersionAdapterFactory.getAdapter("1.21.2");
         VersionAdapter adapter21_3 = VersionAdapterFactory.getAdapter("1.21.3");
         
+        assertNotNull(adapter21_2, "1.21.2 适配器不应为 null");
+        assertNotNull(adapter21_3, "1.21.3 适配器不应为 null");
         assertSame(adapter21_2.getClass(), adapter21_3.getClass(), 
                 "1.21.2 和 1.21.3 应该使用相同的适配器类");
         
@@ -105,6 +108,9 @@ class VersionAdapterFactoryTest {
         VersionAdapter adapter21_7 = VersionAdapterFactory.getAdapter("1.21.7");
         VersionAdapter adapter21_8 = VersionAdapterFactory.getAdapter("1.21.8");
         
+        assertNotNull(adapter21_6, "1.21.6 适配器不应为 null");
+        assertNotNull(adapter21_7, "1.21.7 适配器不应为 null");
+        assertNotNull(adapter21_8, "1.21.8 适配器不应为 null");
         assertSame(adapter21_6.getClass(), adapter21_7.getClass(), 
                 "1.21.6, 1.21.7, 1.21.8 应该使用相同的适配器类");
         assertSame(adapter21_6.getClass(), adapter21_8.getClass(), 

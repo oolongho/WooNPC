@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("LRU 缓存策略测试")
+@SuppressWarnings("java:S1607")
 class LRUCacheTest {
 
     private static final int MAX_CACHE_SIZE = 100;
