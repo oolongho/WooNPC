@@ -26,7 +26,6 @@ import com.oolonghoo.woonpc.version.VersionAdapter;
 import com.oolonghoo.woonpc.version.VersionAdapterFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -60,19 +59,12 @@ public class NpcImpl extends Npc {
     private Display.TextDisplay sittingVehicle;
     private int sittingVehicleId = -1;
     
-    // 当前姿势
-    private Pose currentPose = Pose.STANDING;
-    
     // 当前朝向
     private float currentYaw = 0f;
     private float currentPitch = 0f;
     
     // 区块可见性缓存 (Player UUID -> Chunk Key -> Boolean)
     private final Map<UUID, Map<Long, Boolean>> chunkVisibilityCache = createLRUCache(500);
-    
-    // 缓存失效计数器
-    private int cacheInvalidationCounter = 0;
-    private static final int CACHE_INVALIDATION_INTERVAL = 100;
     
     // 实体数据访问器缓存（由 EntityMetadata 管理）
     // 注：反射缓存已移至 AbstractVersionAdapter
@@ -145,11 +137,9 @@ public class NpcImpl extends Npc {
         // 创建 GameProfile（用于玩家型 NPC）
         this.gameProfile = new GameProfile(uuid, localName);
         
-        // 设置初始朝向
-        if (location != null) {
-            this.currentYaw = location.getYaw();
-            this.currentPitch = location.getPitch();
-        }
+        // 设置初始朝向（location 已在上面验证非空）
+        this.currentYaw = location.getYaw();
+        this.currentPitch = location.getPitch();
         
         // 清除团队状态
         isTeamCreated.clear();
@@ -264,7 +254,12 @@ public class NpcImpl extends Npc {
             actions.add(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED);
         }
         
-        Component displayName = Component.literal(localName);
+        // 使用配置的显示名称，而不是 localName
+        String displayNameStr = data.getDisplayName();
+        if (displayNameStr == null || displayNameStr.isEmpty() || displayNameStr.equalsIgnoreCase("<empty>")) {
+            displayNameStr = data.getName(); // 使用 NPC 名称作为默认显示名称
+        }
+        Component displayName = Component.literal(displayNameStr);
         ClientboundPlayerInfoUpdatePacket.Entry entry = createPlayerInfoEntry(profile, displayName);
         
         return new ClientboundPlayerInfoUpdatePacket(actions, List.of(entry));
@@ -485,6 +480,11 @@ public class NpcImpl extends Npc {
     
     @Override
     public void move(Player player, boolean swingArm) {
+        // 检查 NPC 是否对玩家可见
+        if (!isVisibleForPlayer.getOrDefault(player.getUniqueId(), false)) {
+            return;
+        }
+        
         VersionAdapter adapter = getAdapter();
         
         // 更新当前朝向
