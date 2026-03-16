@@ -1021,7 +1021,13 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         // 复制其他属性
         target.getData().setSkinName(sourceData.getSkinName());
         target.getData().setSkinMirror(sourceData.isSkinMirror());
-        target.getData().setDisplayName(sourceData.getDisplayName());
+        // 如果源 NPC 的 display name 与源名称相同，则新 NPC 使用新名称
+        // 否则复制源 NPC 的 display name
+        if (sourceData.getDisplayName().equals(sourceData.getName())) {
+            target.getData().setDisplayName(targetName);
+        } else {
+            target.getData().setDisplayName(sourceData.getDisplayName());
+        }
         target.getData().setShowInTab(sourceData.isShowInTab());
         target.getData().setTurnToPlayer(sourceData.isTurnToPlayer());
         target.getData().setGlowing(sourceData.isGlowing());
