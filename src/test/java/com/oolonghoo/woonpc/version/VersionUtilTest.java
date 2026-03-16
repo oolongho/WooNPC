@@ -53,15 +53,6 @@ class VersionUtilTest {
         assertEquals("1.21.11", VersionUtil.MAX_VERSION);
     }
 
-    static Stream<Arguments> versionComparisonProvider() {
-        return Stream.of(
-            Arguments.of(1, 21, 2, true),
-            Arguments.of(1, 21, 0, false),
-            Arguments.of(1, 22, 0, false),
-            Arguments.of(1, 20, 0, false)
-        );
-    }
-
     @Test
     @DisplayName("版本范围枚举测试")
     void testVersionRange() {
