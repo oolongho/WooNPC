@@ -1,13 +1,17 @@
 package com.oolonghoo.woonpc.version;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @DisplayName("VersionAdapterFactory 版本适配器工厂测试")
-@SuppressWarnings("java:S1607")
+@SuppressWarnings({"java:S1607", "java:S2583", "java:S2259"})
 class VersionAdapterFactoryTest {
 
     @BeforeEach
